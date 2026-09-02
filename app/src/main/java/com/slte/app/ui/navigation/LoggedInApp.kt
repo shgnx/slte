@@ -80,6 +80,15 @@ fun LoggedInApp(
         }
     }
 
+    // 首页状态提示（订阅更新结果/连接错误等）全局消费：任何页面都能弹出，不限于首页
+    LaunchedEffect(mainData.errorMessageRes) {
+        val res = mainData.errorMessageRes
+        if (res != null) {
+            android.widget.Toast.makeText(context, context.getString(res), android.widget.Toast.LENGTH_SHORT).show()
+            mainViewModel.clearError()
+        }
+    }
+
     val pageStack = remember { mutableStateListOf(Page.Dashboard) }
     var pendingInvite by remember { mutableStateOf(false) }
     var pendingNotice by remember { mutableStateOf(false) }

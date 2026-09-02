@@ -29,6 +29,7 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.slte.app.R
+import com.slte.app.ui.component.formatCurrency
 import com.slte.app.domain.model.InviteStat
 import com.slte.app.ui.theme.SlteColors
 import com.slte.app.ui.theme.SlteShapes
@@ -69,10 +70,10 @@ fun InviteStatCard(stat: InviteStat) {
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
             Text(
-                text = FormatUtils.currency(stat.availableBalance),
+                text = formatCurrency(stat.availableBalance),
                 fontSize = TextSizes.inviteBalanceLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = SlteColors.current.iconBlue
             )
             Spacer(modifier = Modifier.height(Dimens.spacingXs))
             Text(
@@ -107,12 +108,12 @@ fun InviteStatCard(stat: InviteStat) {
                 )
                 StatColumn(
                     label = stringResource(R.string.invite_stat_total),
-                    value = FormatUtils.currency(stat.totalCommission),
+                    value = formatCurrency(stat.totalCommission),
                     modifier = Modifier.weight(1f)
                 )
                 StatColumn(
                     label = stringResource(R.string.invite_stat_pending),
-                    value = FormatUtils.currency(stat.pendingCommission),
+                    value = formatCurrency(stat.pendingCommission),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -159,8 +160,12 @@ fun InviteActionButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {}
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Card(
-        onClick = onClick,
+        onClick = {
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+            onClick()
+        },
         modifier = modifier.height(Dimens.inviteActionButtonHeight),
         shape = SlteShapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

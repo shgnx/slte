@@ -1,8 +1,12 @@
 package com.slte.app.ui.screen.main
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.VpnService
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -58,24 +62,18 @@ internal fun MainScreen(
     val vpnPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        // 只在用户真正允许 VPN 授权后继续连接；拒绝/返回时复位连接状态并提示
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             mainViewModel.toggleConnection()
         } else {
             mainViewModel.onVpnPermissionDenied()
         }
     }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
 
     LaunchedEffect(Unit) {
         mainViewModel.refreshKernelInfo()
-    }
-
-    LaunchedEffect(data.errorMessageRes) {
-        val res = data.errorMessageRes
-        if (res != null) {
-            android.widget.Toast.makeText(context, context.getString(res), android.widget.Toast.LENGTH_SHORT).show()
-            mainViewModel.clearError()
-        }
     }
 
     Scaffold(
@@ -122,6 +120,7 @@ internal fun MainScreen(
                     ).show()
                     onRenew()
                 } else {
+                    requestNotificationPermission(context, notificationPermissionLauncher)
                     val request = VpnService.prepare(context)
                     if (request != null) {
                         vpnPermissionLauncher.launch(request)
@@ -155,6 +154,18 @@ internal fun MainScreen(
         )
     }
 
+}
+
+private fun requestNotificationPermission(
+    context: android.content.Context,
+    launcher: androidx.activity.result.ActivityResultLauncher<String>
+) {
+    if (Build.VERSION.SDK_INT >= 33 &&
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+        PackageManager.PERMISSION_GRANTED
+    ) {
+        launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
 }
 
 /** 仪表盘内容 */
@@ -193,7 +204,6 @@ internal fun DashboardContent(
                 isValid = data.isValid,
                 hasPlan = data.hasPlan,
                 daysUntilExpired = if (data.expiredAt > 0L) data.daysUntilExpired else null,
-                daysUntilReset = data.daysUntilReset,
                 expiredAtDate = if (data.expiredAt > 0L) FormatUtils.formatExpiryDate(data.expiredAt) else null,
                 actionText = stringResource(
                     if (data.hasPlan) R.string.plan_renew_button

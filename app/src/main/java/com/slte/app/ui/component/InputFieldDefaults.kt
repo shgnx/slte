@@ -20,5 +20,5 @@ fun InputFieldColors() = TextFieldDefaults.colors(
     unfocusedIndicatorColor = Color.Transparent,
     disabledIndicatorColor = Color.Transparent,
     errorIndicatorColor = MaterialTheme.colorScheme.error,
-    cursorColor = MaterialTheme.colorScheme.primary,
+    cursorColor = SlteColors.current.iconBlue,
 )

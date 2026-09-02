@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slte.app.R
+import com.slte.app.data.remote.ApiException
 import com.slte.app.data.repository.InviteRepository
 import com.slte.app.domain.model.CommissionRecord
 import com.slte.app.domain.model.InviteCodeInfo
@@ -95,8 +96,15 @@ class InviteViewModel @Inject constructor(
                 } else {
                     _data.update { it.copy(isGenerating = false, toastRes = R.string.invite_error_generate) }
                 }
-            }.onFailure {
-                _data.update { it.copy(isGenerating = false, toastRes = R.string.invite_error_generate) }
+            }.onFailure { e ->
+                // 服务端约定：已达创建数量上限时错误 message 含"上限"字样，
+                // 此时直接提示已达上限，避免误导为通用生成失败
+                val toastRes = if (e is ApiException && e.message?.contains("上限") == true) {
+                    R.string.invite_error_generate_limit
+                } else {
+                    R.string.invite_error_generate
+                }
+                _data.update { it.copy(isGenerating = false, toastRes = toastRes) }
             }
         }
     }

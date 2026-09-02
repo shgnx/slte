@@ -31,8 +31,7 @@ fun PurchaseFlow(
     onConfirmPayment: () -> Unit,
     onPaymentReturn: () -> Unit,
     onDismiss: () -> Unit,
-    onGoToOrders: () -> Unit = onDismiss,
-    onDismissCouponError: () -> Unit = {}
+    onGoToOrders: () -> Unit = onDismiss
 ) {
     val context = LocalContext.current
 
@@ -46,13 +45,6 @@ fun PurchaseFlow(
                 onConfirmOrder = onConfirmOrder,
                 onDismiss = onDismiss
             )
-            val couponErrorRes = step.couponErrorRes
-            if (couponErrorRes != null) {
-                CouponErrorDialog(
-                    errorMessageRes = couponErrorRes,
-                    onDismiss = onDismissCouponError
-                )
-            }
             if (step.showWarning) {
                 ConfirmWarningDialog(
                     onConfirm = onConfirmWarning,

@@ -6,7 +6,8 @@ import com.github.kr328.clash.service.remote.IClashManager
 import com.github.kr328.clash.service.remote.IRemoteService
 import com.github.kr328.clash.service.remote.IProfileManager
 import com.github.kr328.clash.service.remote.wrap
-import com.github.kr328.clash.service.util.cancelAndJoinBlocking
+import com.github.kr328.clash.service.util.cancelAndJoinBlockingAsync
+import kotlinx.coroutines.CoroutineScope
 
 class RemoteService : BaseService(), IRemoteService {
     private val binder = this.wrap()
@@ -28,8 +29,7 @@ class RemoteService : BaseService(), IRemoteService {
     override fun onDestroy() {
         super.onDestroy()
 
-        clash?.cancelAndJoinBlocking()
-        profile?.cancelAndJoinBlocking()
+        cancelAndJoinBlockingAsync(*listOfNotNull<CoroutineScope>(clash, profile).toTypedArray())
     }
 
     override fun onBind(intent: Intent?): IBinder {

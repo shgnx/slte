@@ -31,6 +31,7 @@ import com.slte.app.R
 import com.slte.app.ui.component.AppLocaleContent
 import com.slte.app.ui.component.LocalAppLocale
 import com.slte.app.ui.theme.SlteShapes
+import com.slte.app.ui.theme.SlteColors
 import com.slte.app.ui.theme.TextSizes
 import com.slte.app.utils.Dimens
 
@@ -53,17 +54,16 @@ fun UpdateSheet(
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true,
         confirmValueChange = { value ->
-            // 强制更新时禁止下滑关闭
             if (state.force && value == SheetValue.Hidden) false else true
         }
     )
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     ModalBottomSheet(
         onDismissRequest = { if (!state.force) onDismiss() },
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface
     ) {
-        // 弹窗是独立窗口组合，LocalContext 不随根组件更新，需在此按语言重建
         AppLocaleContent(locale = LocalAppLocale.current) {
             Column(
                 modifier = Modifier
@@ -79,7 +79,7 @@ fun UpdateSheet(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .size(Dimens.actionIconBgSize),
-                tint = MaterialTheme.colorScheme.primary
+                tint = SlteColors.current.iconBlue
             )
 
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
@@ -120,7 +120,7 @@ fun UpdateSheet(
                     text = "v${state.versionName}",
                     fontSize = TextSizes.sheetTitle,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = SlteColors.current.iconBlue
                 )
             }
 
@@ -144,7 +144,10 @@ fun UpdateSheet(
             Spacer(modifier = Modifier.height(Dimens.spacingLg))
 
             Button(
-                onClick = onUpdateNow,
+                onClick = {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    onUpdateNow()
+                },
                 enabled = true,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -158,7 +161,10 @@ fun UpdateSheet(
             if (!state.force) {
                 Spacer(modifier = Modifier.height(Dimens.spacingSm))
                 OutlinedButton(
-                    onClick = onLater,
+                    onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        onLater()
+                    },
                     enabled = true,
                     modifier = Modifier
                         .fillMaxWidth()

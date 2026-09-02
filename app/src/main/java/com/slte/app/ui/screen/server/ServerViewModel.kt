@@ -105,16 +105,20 @@ class ServerViewModel @Inject constructor(
     ) {
         // 已有延迟（缓存或本次测速）在刷新节点列表时保留
         val existing = _data.value.nodes.associate { it.name to it.delay }
-        val nodes = servers.map { server ->
-            ServerNode(
-                id = server.id,
-                name = server.name,
-                countryCode = extractCountryCode(server.name),
-                type = server.type.name,
-                host = server.host,
-                delay = delays?.get(server.name) ?: existing[server.name]
-            )
-        }
+        val nodes = servers
+            // 上游后端节点 id 可能重复（数据不可控）：按名称去重 + 本地重排 id 保证唯一；
+            // 节点选择按名称进行（selectNode(name)），本地 id 仅用于列表 key 与选中态
+            .distinctBy { it.name }
+            .mapIndexed { index, server ->
+                ServerNode(
+                    id = index + 1,
+                    name = server.name,
+                    countryCode = extractCountryCode(server.name),
+                    type = server.type.name,
+                    host = server.host,
+                    delay = delays?.get(server.name) ?: existing[server.name]
+                )
+            }
         _data.update { it.copy(nodes = nodes, isLoading = false) }
         refreshSpecialNodes()
     }
@@ -157,9 +161,10 @@ class ServerViewModel @Inject constructor(
             val delays = kernelProxy.speedTestProgressiveAndCache { partial ->
                 _data.update { state ->
                     if (partial.isEmpty()) return@update state
+                    // 已出真实结果的节点保持首次显示值，测速过程数值稳定，最终统一补齐
                     val nodes = state.nodes.map { node ->
                         val d = partial[node.name]
-                        if (d != null && d != 999) node.copy(delay = d) else node
+                        if (d != null && d != 999 && node.name !in state.testedNodes) node.copy(delay = d) else node
                     }
                     // 已出真实结果的节点立即去转圈显示延迟；未出的继续转
                     val tested = partial.filterValues { it != 999 }.keys

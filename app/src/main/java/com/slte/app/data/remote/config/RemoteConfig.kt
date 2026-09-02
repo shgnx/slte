@@ -65,6 +65,8 @@ private data class RemoteConfigDto(
     @SerialName("api_base_url") val apiBaseUrl: String? = null,
     /** 单值或数组均可：字符串按单地址解析，数组按多地址竞速解析 */
     @SerialName("api_base_urls") val apiBaseUrls: JsonElement? = null,
+    /** 兼容第三方托管格式的 API 地址列表（单值/数组，支持 Base64 混用，与 api_base_urls 等价） */
+    @SerialName("api") val api: JsonElement? = null,
     @SerialName("direct_domains") val directDomains: JsonElement? = null,
     @SerialName("api_type") val apiType: String? = null,
     @SerialName("crisp_website_id") val crispWebsiteId: String? = null,
@@ -152,11 +154,14 @@ class RemoteConfig @Inject constructor(
     val dataFlow: StateFlow<RemoteConfigData> = _dataFlow.asStateFlow()
     val data: RemoteConfigData get() = _dataFlow.value
 
-    /** 运行期 failover 候选列表：主地址在前，其余按健康度排列（熔断的排后） */
-    override fun apiCandidates(primary: String): List<String> = buildList {
-        add(primary)
-        addAll(selector.candidateOrder(primary, dataFlow.value.apiBaseUrls.filter { it != primary }))
-    }
+    /**
+     * 运行期 failover 候选列表：主地址在前，其余按健康度排列（熔断的排后）。
+     * 委托 candidateOrder 统一保证主地址去重：同一地址在候选列表中只出现一次，
+     * 否则拦截器会对同一地址二次重试——OkHttp 要求同一请求内前一个响应
+     * 关闭后才能再次 proceed，未关闭直接重试会抛 IllegalStateException。
+     */
+    override fun apiCandidates(primary: String): List<String> =
+        selector.candidateOrder(primary, dataFlow.value.apiBaseUrls)
 
     /** 启动自动拉取：由主进程 Application 调用（后台进程不重复拉取，避免双写） */
     fun startFetch() {
@@ -195,10 +200,9 @@ class RemoteConfig @Inject constructor(
 
     /**
      * 拉取并应用远程配置：成功返回 true；全部配置源失败返回 false（保留现有缓存）。
-     * 手动"检测更新"应传 force=true 绕过短时间缓存。
+     * 手动"检测更新"应传 force=true 绕过短时间缓存。短时间缓存内非强制刷新直接复用；多源并发竞速择优；304 命中沿用缓存；API 候选并发探测后粘滞选主（当前主健康则保持，明显更快才切换）；后端类型只认构建期内置值。
      */
     suspend fun refresh(force: Boolean = false): Boolean {
-        // 短时间缓存：非强制且缓存新鲜（5 分钟内）时直接复用，避免启动重复下载
         val now = System.currentTimeMillis()
         val cached = loadCached()
         if (!force && cached != null && ConfigValidation.isCacheFresh(cached.fetchedAt, now, CONFIG_CACHE_TTL_MS)) {
@@ -206,7 +210,6 @@ class RemoteConfig @Inject constructor(
             return true
         }
 
-        // 多源并发竞速：上次成功源优先，全部源在整体超时内完成，择优后统一生效
         val urls = orderedConfigUrls()
         if (urls.isEmpty()) return false
         val result = try {
@@ -221,7 +224,6 @@ class RemoteConfig @Inject constructor(
         }
         val chosen = result.chosen ?: return false
 
-        // 304 命中：内容未变，仅刷新缓存时间戳与来源，沿用既有配置
         if (chosen.notModified && cached != null) {
             writeCache(cached.copy(fetchedAt = now, sourceUrl = chosen.url))
             _dataFlow.value = cached.config
@@ -237,7 +239,6 @@ class RemoteConfig @Inject constructor(
         }
 
         val candidates = resolveApiCandidates(dto)
-        // 多 API 并发探测 + 粘滞选主：当前主地址健康则保持，新地址明显更快才切换
         val probes = probeAll(candidates)
         probes.forEach { (url, latency) -> selector.recordProbe(url, latency) }
         val primary = selector.pickPrimary(
@@ -251,7 +252,6 @@ class RemoteConfig @Inject constructor(
             apiBaseUrl = primary,
             apiBaseUrls = candidates.ifEmpty { listOf(BuildConfig.API_BASE_URL) },
             directDomains = resolveDirectDomains(dto.directDomains),
-            // 后端类型只认构建期内置值
             apiType = dto.apiType?.trim()?.takeIf { it == BuildConfig.API_TYPE } ?: BuildConfig.API_TYPE,
             crispWebsiteId = dto.crispWebsiteId?.trim()?.takeIf { it.isNotBlank() }
                 ?: BuildConfig.CRISP_WEBSITE_ID,
@@ -338,26 +338,28 @@ class RemoteConfig @Inject constructor(
         return urls
     }
 
-    /** 从 DTO 合并出 API 候选列表（单值/数组/默认值，去重） */
     private fun resolveApiCandidates(dto: RemoteConfigDto): List<String> {
-        val fromArray = dto.apiBaseUrls?.let { el ->
-            when (el) {
-                is JsonPrimitive -> listOf(el.content)
-                is JsonArray -> el.mapNotNull { (it as? JsonPrimitive)?.content }
-                else -> emptyList()
-            }
-        } ?: emptyList()
+        val fromArray = dto.apiBaseUrls?.let { el -> jsonElementToList(el) } ?: emptyList()
+        val fromApi = dto.api?.let { el -> jsonElementToList(el) } ?: emptyList()
         val list = buildList {
             dto.apiBaseUrl?.let { takeIfAllowed(it) }?.let { add(it) }
-            fromArray.mapNotNull { takeIfAllowed(it) }.forEach { if (it !in this) add(it) }
+            (fromArray + fromApi).mapNotNull { takeIfAllowed(it) }.forEach { if (it !in this) add(it) }
             if (isEmpty()) add(BuildConfig.API_BASE_URL)
         }
         return list
     }
 
-    /** 仅接受 https 且主机在自有域名白名单内的 API 地址（凭据只发往受信域） */
-    private fun takeIfAllowed(value: String): String? =
-        if (ConfigValidation.isValidApiUrl(value, ALLOWED_HOST_SUFFIXES)) value.trim() else null
+    private fun jsonElementToList(element: JsonElement): List<String> = when (element) {
+        is JsonPrimitive -> listOf(element.content)
+        is JsonArray -> element.mapNotNull { (it as? JsonPrimitive)?.content }
+        else -> emptyList()
+    }
+
+    /** 仅接受 https 且主机在自有域名白名单内的 API 地址（Base64 编码先解码；凭据只发往受信域） */
+    private fun takeIfAllowed(value: String): String? {
+        val candidate = ConfigValidation.decodeApiCandidate(value)
+        return if (ConfigValidation.isValidApiUrl(candidate, ALLOWED_HOST_SUFFIXES)) candidate.trim() else null
+    }
 
     /** 直连域名：单值或数组均可，白名单校验后去重 */
     private fun resolveDirectDomains(element: JsonElement?): List<String> = buildList {
@@ -465,7 +467,7 @@ class RemoteConfig @Inject constructor(
         const val PROBE_PATH = "/api/v1/guest/comm/config"
         /** API 域名白名单：内置自有域 + 构建期 SLTE_ALLOWED_DOMAINS 追加；配置只能在这些域内切换 */
         val ALLOWED_HOST_SUFFIXES: List<String> = buildList {
-            // 占位域：部署者替换为自有 API 域名后缀（与 kernel-core process.go directDomains 保持同步）
+            // 占位域：自有 API 域名后缀在此配置（与 kernel-core process.go directDomains 保持同步）
             add("example.com")
             BuildConfig.ALLOWED_DOMAINS.split(',')
                 .map { it.trim().lowercase() }

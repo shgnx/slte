@@ -5,7 +5,6 @@ import androidx.compose.ui.unit.sp
 
 object Dimens {
 
-    // Spacing
     val spacingXs = 4.dp
     val spacingSm = 8.dp
     val spacingMd = 12.dp
@@ -13,7 +12,6 @@ object Dimens {
     val spacingXl = 24.dp
     val spacingXxl = 32.dp
 
-    // Component size
     val buttonHeight = 48.dp
     val fieldHeight = 56.dp
     val logoSize = 96.dp
@@ -109,6 +107,7 @@ object Dimens {
     val dashboardListRowHeight = 56.dp
     val dashboardListRowPaddingH = 18.dp
     val dashboardListRowGap = 12.dp
+    val dashboardListValueMaxWidth = 180.dp
     val dashboardChevronSize = 20.dp
     val dashboardChevronGap = 2.dp
     val dashboardActionIconSize = 20.dp

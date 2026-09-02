@@ -45,6 +45,7 @@ import com.slte.app.R
 import com.slte.app.domain.model.OrderInfo
 import com.slte.app.domain.model.OrderStatus
 import com.slte.app.ui.component.SlteScaffold
+import com.slte.app.ui.component.formatCurrency
 import com.slte.app.ui.component.EmptyState
 import com.slte.app.ui.component.SltePullRefresh
 import com.slte.app.ui.theme.SlteColors
@@ -64,6 +65,7 @@ fun OrdersScreen(
 ) {
     val data by viewModel.data.collectAsStateWithLifecycle()
     val errorMessageRes by viewModel.errorMessageRes.collectAsStateWithLifecycle()
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     com.slte.app.ui.component.ToastTip(
         messageRes = data.toastRes,
@@ -110,7 +112,10 @@ fun OrdersScreen(
                         )
                         Spacer(modifier = Modifier.height(Dimens.spacingLg))
                         OutlinedButton(
-                            onClick = viewModel::retry
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                viewModel.retry()
+                            }
                         ) {
                             Text(stringResource(R.string.notice_retry))
                         }
@@ -136,7 +141,7 @@ fun OrdersScreen(
                         verticalArrangement = Arrangement.spacedBy(Dimens.dashboardCardSpacing),
                         contentPadding = PaddingValues(vertical = Dimens.dashboardScreenPaddingV)
                     ) {
-                        items(data.orders, key = { it.tradeNo }) { order ->
+                        items(data.orders.distinctBy { it.tradeNo }, key = { it.tradeNo }) { order ->
                             OrderCard(
                                 order = order,
                                 onCancel = { viewModel.cancelOrder(order.tradeNo) },
@@ -156,6 +161,7 @@ private fun OrderCard(
     onCancel: () -> Unit,
     onPay: () -> Unit
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val isPending = order.statusClass == OrderStatus.PENDING
 
     Card(
@@ -196,7 +202,7 @@ private fun OrderCard(
 
             OrderDetailRow(
                 label = stringResource(R.string.order_price),
-                value = FormatUtils.currency(order.totalAmount)
+                value = formatCurrency(order.totalAmount)
             )
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
             OrderDetailRow(
@@ -216,14 +222,20 @@ private fun OrderCard(
                     horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
                 ) {
                     OutlinedButton(
-                        onClick = onCancel,
+                        onClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            onCancel()
+                        },
                         modifier = Modifier.weight(1f),
                         shape = SlteShapes.medium
                     ) {
                         Text(stringResource(R.string.order_cancel))
                     }
                     Button(
-                        onClick = onPay,
+                        onClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            onPay()
+                        },
                         modifier = Modifier.weight(1f),
                         shape = SlteShapes.medium
                     ) {

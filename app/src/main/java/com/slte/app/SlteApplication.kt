@@ -8,10 +8,19 @@ import com.slte.app.data.remote.config.CrispManager
 import com.slte.app.data.remote.config.RemoteConfig
 import com.slte.app.kernel.KernelManager
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import javax.inject.Inject
 
+/**
+ * 应用入口：双进程架构下仅在主进程执行远程配置拉取、半开探测与内核服务绑定，
+ * 后台进程（:background）无界面、不消费配置，避免双进程各自写缓存不一致；
+ * GeoIP/GeoSite 数据解压放后台线程，保证内核连接前就绪。
+ */
 @HiltAndroidApp
 class SlteApplication : Application() {
 
@@ -19,40 +28,42 @@ class SlteApplication : Application() {
     lateinit var crispManager: CrispManager
 
     @Inject
-    lateinit var crispConfig: CrispConfig
-
-    @Inject
     lateinit var kernelManager: KernelManager
 
     @Inject
     lateinit var remoteConfig: RemoteConfig
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     override fun attachBaseContext(base: android.content.Context?) {
-        // 只包装主进程：后台进程（clash 内核）无界面，且系统实例化其 Receiver 时要求 base 为 ContextImpl
         val wrapped = if (base != null && getProcessName() == base.packageName) {
             LocaleStore.wrapBase(base)
         } else {
             base
         }
         super.attachBaseContext(wrapped)
-        // 内核模块的 Global 依赖 Application，后台进程也会走到这里
         Global.init(this)
     }
 
     override fun onCreate() {
         super.onCreate()
-        // GeoIP/GeoSite 解压放后台线程，内核连接前完成
         Thread { extractGeoFiles() }.start()
-        // 远程配置只在主进程拉取：后台进程（内核服务）不消费配置，避免双进程各自写缓存不一致
         if (getProcessName() == packageName) {
             remoteConfig.startFetch()
-            // 半开恢复探测：故障 API 地址退避期结束后自动探活恢复，不依赖下次配置刷新
             remoteConfig.startProbeLoop()
-        }
-        crispManager.init(this, crispConfig)
-        // 只在主进程绑定内核服务（:background 进程由系统拉起）
-        if (getProcessName() == packageName) {
+            observeCrispConfig()
             kernelManager.bind()
+        }
+    }
+
+    private fun observeCrispConfig() {
+        scope.launch {
+            remoteConfig.dataFlow.collect { cfg ->
+                crispManager.init(
+                    this@SlteApplication,
+                    CrispConfig(cfg.crispWebsiteId, cfg.crispEnabled)
+                )
+            }
         }
     }
 

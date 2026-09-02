@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import com.slte.app.R
 import com.slte.app.domain.model.InviteCodeInfo
 import com.slte.app.ui.theme.SlteShapes
+import com.slte.app.ui.theme.SlteColors
 import com.slte.app.utils.Dimens
 import com.slte.app.ui.theme.TextSizes
 
@@ -40,6 +41,7 @@ fun InviteCodeCard(
     onGenerate: () -> Unit,
     context: android.content.Context
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = SlteShapes.large,
@@ -62,7 +64,10 @@ fun InviteCodeCard(
                     fontSize = TextSizes.dashboardUsageTitle,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                TextButton(onClick = onGenerate, enabled = !isGenerating) {
+                TextButton(onClick = {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    onGenerate()
+                }, enabled = !isGenerating) {
                     Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(Dimens.inviteCodeCopyIconSize))
                     Spacer(modifier = Modifier.width(Dimens.spacingXs))
                     Text(stringResource(R.string.invite_code_generate), fontSize = TextSizes.inviteSheetMethod)
@@ -88,6 +93,7 @@ fun InviteCodeCard(
 
 @Composable
 private fun InviteCodeItem(code: InviteCodeInfo, context: android.content.Context) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -112,6 +118,7 @@ private fun InviteCodeItem(code: InviteCodeInfo, context: android.content.Contex
         Spacer(modifier = Modifier.width(Dimens.spacingSm))
         IconButton(
             onClick = {
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                 val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
                 clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("invite_code", code.code))
                 Toast.makeText(context, context.getString(R.string.invite_code_copied), Toast.LENGTH_SHORT).show()
@@ -122,7 +129,7 @@ private fun InviteCodeItem(code: InviteCodeInfo, context: android.content.Contex
                 Icons.Rounded.ContentCopy,
                 contentDescription = stringResource(R.string.invite_code_copy),
                 modifier = Modifier.size(Dimens.inviteCodeCopyIconSize),
-                tint = MaterialTheme.colorScheme.primary
+                tint = SlteColors.current.iconBlue
             )
         }
     }

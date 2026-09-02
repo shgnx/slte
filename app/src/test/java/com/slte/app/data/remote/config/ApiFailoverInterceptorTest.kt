@@ -118,4 +118,42 @@ class ApiFailoverInterceptorTest {
         assertEquals(3, server1.requestCount)
         assertEquals(4, server2.requestCount)
     }
+
+    @Test
+    fun `候选列表重复时全部故障不抛异常`() {
+        // 回归：候选列表含同一地址两次时，前一个故障响应必须在重试前关闭，
+        // 否则 OkHttp 抛 "previous response is still open" 的 IllegalStateException
+        val dupConfig = object : FailoverConfig {
+            override val apiBaseUrl: String = primary
+            override fun apiCandidates(primary: String): List<String> = listOf(primary, primary)
+        }
+        val dupClient = OkHttpClient.Builder()
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.SECONDS)
+            .addInterceptor(ApiFailoverInterceptor(dupConfig, selector))
+            .build()
+        server1.enqueue(MockResponse().setResponseCode(500))
+        server1.enqueue(MockResponse().setResponseCode(500))
+        dupClient.newCall(Request.Builder().url(server1.url("/api/v1/user/info")).build())
+            .execute().use { assertEquals(500, it.code) }
+        assertEquals(2, server1.requestCount)
+    }
+
+    @Test
+    fun `单候选故障时直接返回故障响应`() {
+        // 仅一个候选地址（远程配置单地址的常规形态）：故障时返回响应本身，不做二次重试
+        val singleConfig = object : FailoverConfig {
+            override val apiBaseUrl: String = primary
+            override fun apiCandidates(primary: String): List<String> = listOf(primary)
+        }
+        val singleClient = OkHttpClient.Builder()
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.SECONDS)
+            .addInterceptor(ApiFailoverInterceptor(singleConfig, selector))
+            .build()
+        server1.enqueue(MockResponse().setResponseCode(500))
+        singleClient.newCall(Request.Builder().url(server1.url("/api/v1/user/info")).build())
+            .execute().use { assertEquals(500, it.code) }
+        assertEquals(1, server1.requestCount)
+    }
 }

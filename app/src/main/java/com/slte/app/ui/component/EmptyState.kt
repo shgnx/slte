@@ -35,6 +35,7 @@ fun EmptyState(
     actionText: String? = null,
     onAction: (() -> Unit)? = null
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -62,7 +63,10 @@ fun EmptyState(
         }
         if (actionText != null && onAction != null) {
             Spacer(modifier = Modifier.height(Dimens.spacingXl))
-            OutlinedButton(onClick = onAction) {
+            OutlinedButton(onClick = {
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                onAction()
+            }) {
                 Text(actionText)
             }
         }

@@ -24,6 +24,7 @@ import com.slte.app.R
 import com.slte.app.ui.component.AppLocaleContent
 import com.slte.app.ui.component.LocalAppLocale
 import com.slte.app.ui.theme.TextSizes
+import com.slte.app.ui.theme.SlteColors
 import com.slte.app.utils.Dimens
 import com.slte.app.utils.isTraditionalChinese
 import java.util.Locale
@@ -56,13 +57,13 @@ internal fun LanguageModeSheet(
     onSelect: (LanguageMode) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface
     ) {
-        // 弹窗是独立窗口组合，LocalContext 不随根组件更新，需在此按语言重建
         AppLocaleContent(locale = LocalAppLocale.current) {
             Column(
                 modifier = Modifier
@@ -90,7 +91,10 @@ internal fun LanguageModeSheet(
                             .fillMaxWidth()
                             .selectable(
                                 selected = selected,
-                                onClick = { onSelect(mode) }
+                                onClick = {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                    onSelect(mode)
+                                }
                             )
                             .padding(vertical = Dimens.spacingSm),
                         verticalAlignment = Alignment.CenterVertically
@@ -99,7 +103,7 @@ internal fun LanguageModeSheet(
                             selected = selected,
                             onClick = null,
                             colors = RadioButtonDefaults.colors(
-                                selectedColor = MaterialTheme.colorScheme.primary
+                                selectedColor = SlteColors.current.iconBlue
                             )
                         )
                         Column(

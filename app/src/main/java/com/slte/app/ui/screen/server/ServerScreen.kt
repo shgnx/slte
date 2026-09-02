@@ -59,6 +59,7 @@ fun ServerScreen(
     val data by viewModel.data.collectAsStateWithLifecycle()
     val errorMessageRes by viewModel.errorMessageRes.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     LaunchedEffect(errorMessageRes) {
         errorMessageRes?.let {
@@ -108,14 +109,16 @@ fun ServerScreen(
                     )
                     Spacer(modifier = Modifier.height(Dimens.spacingLg))
                     OutlinedButton(
-                        onClick = viewModel::retry
+                        onClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            viewModel.retry()
+                        }
                     ) {
                         Text(stringResource(R.string.notice_retry))
                     }
                 }
             }
         } else if (data.nodes.isEmpty()) {
-            // 节点为空（无错误）：空状态动画 + 标题
             EmptyState(
                 title = stringResource(R.string.server_nodes_empty),
                 modifier = Modifier.padding(innerPadding)
@@ -162,13 +165,12 @@ fun ServerScreen(
                     )
                 }
 
-                items(data.nodes, key = { it.id }) { node ->
+                items(data.nodes.distinctBy { it.id }, key = { it.id }) { node ->
                     NodeCard(
                         name = node.name,
                         icon = { FlagPlaceholder(countryCode = node.countryCode, circular = true) },
                         delay = node.delay,
                         selected = data.selectedNodeId == node.id,
-                        // 已出结果的节点显示延迟，未出的继续转圈（先测完先出）
                         isTesting = data.isTesting && node.name !in data.testedNodes,
                         onClick = { viewModel.selectNode(node.id) }
                     )
@@ -192,10 +194,10 @@ private fun NodeCard(
     isTesting: Boolean,
     onClick: () -> Unit
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = SlteShapes.large,
-        // 选中态：卡片保持白色，仅边缘描边变色（不整体变色）
         color = MaterialTheme.colorScheme.surface,
         border = if (selected) {
             BorderStroke(Dimens.strokeMedium, MaterialTheme.colorScheme.primary)
@@ -203,7 +205,10 @@ private fun NodeCard(
             null
         },
         shadowElevation = Dimens.cardElevation,
-        onClick = onClick
+        onClick = {
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+            onClick()
+        }
     ) {
         Row(
             modifier = Modifier

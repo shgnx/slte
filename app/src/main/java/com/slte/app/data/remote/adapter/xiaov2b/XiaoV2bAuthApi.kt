@@ -139,7 +139,6 @@ class XiaoV2bAuthApi(
         val response = execute { userApi.fetchSubscribe() }
         val data = response.data
         if (data == null) {
-            // 无订阅/无套餐属正常业务状态，返回空订阅而非报错
             if (BuildConfig.DEBUG) {
                 AppLog.d("SLTE-Api", "fetchSubscribeInfo: 无订阅，返回空订阅")
             }
@@ -160,7 +159,6 @@ class XiaoV2bAuthApi(
         return data.map { it.toDomainOrder() }
     }
 
-    // 套餐购买
 
     override suspend fun fetchPlans(): List<PlanInfoDto> {
         if (BuildConfig.DEBUG) {
@@ -243,7 +241,6 @@ class XiaoV2bAuthApi(
         }
     }
 
-    // 邀请推广
 
     override suspend fun fetchInviteInfo(): InviteInfo {
         val response = execute { userApi.fetchInviteInfo() }
@@ -285,7 +282,6 @@ class XiaoV2bAuthApi(
         return response.data ?: false
     }
 
-    // 公告通知
 
     override suspend fun fetchNotices(page: Int, pageSize: Int): List<Notice> {
         val response = execute { userApi.fetchNotices(page, pageSize) }
@@ -293,7 +289,6 @@ class XiaoV2bAuthApi(
         return data.map { it.toDomain() }
     }
 
-    // 服务器节点
 
     override suspend fun fetchServers(): List<ServerNode> {
         val response = execute { userApi.fetchServers() }
@@ -315,7 +310,6 @@ class XiaoV2bAuthApi(
             }
             response
         } catch (e: CancellationException) {
-            // 协程取消必须重新抛出
             throw e
         } catch (e: ApiException) {
             throw e
@@ -339,7 +333,6 @@ class XiaoV2bAuthApi(
             AppLog.w("SLTE-Api", "execute IOException: ${sanitizeLog(e.message ?: "Unknown")}")
             throw ApiException("请求失败，请检查网络连接", ApiErrors.NETWORK)
         } catch (e: Exception) {
-            // 响应解析等未知异常
             AppLog.w("SLTE-Api", "execute unexpected ${e.javaClass.simpleName}: ${sanitizeLog(e.message ?: "Unknown")}")
             throw ApiException("服务器响应异常", ApiErrors.NETWORK)
         }

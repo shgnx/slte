@@ -64,8 +64,8 @@ fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
-    // 各状态共享 form 数据
     val form = when (val s = state) {
         is LoginUiState.Form -> s
         is LoginUiState.LoggingIn -> s.form
@@ -143,7 +143,10 @@ fun LoginScreen(
                 placeholder = stringResource(R.string.login_password_hint),
                 leadingIcon = Icons.Outlined.Lock,
                 trailingIcon = {
-                    IconButton(onClick = viewModel::togglePasswordVisible) {
+                    IconButton(onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        viewModel.togglePasswordVisible()
+                    }) {
                         Icon(
                             imageVector = if (form.passwordVisible) {
                                 Icons.Outlined.VisibilityOff
@@ -169,6 +172,7 @@ fun LoginScreen(
 
             Button(
                 onClick = {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                     viewModel.login()
                 },
                 enabled = !isLoading,
@@ -200,7 +204,10 @@ fun LoginScreen(
                 ) {
                     Checkbox(
                         checked = form.rememberMe,
-                        onCheckedChange = { viewModel.toggleRememberMe() },
+                        onCheckedChange = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            viewModel.toggleRememberMe()
+                        },
                         enabled = !isLoading
                     )
                     Text(
@@ -211,7 +218,10 @@ fun LoginScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                TextButton(onClick = onForgotPassword) {
+                TextButton(onClick = {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    onForgotPassword()
+                }) {
                     Text(stringResource(R.string.login_forgot_password))
                 }
             }
@@ -219,7 +229,10 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
             OutlinedButton(
-                onClick = viewModel::checkRegisterConfig,
+                onClick = {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    viewModel.checkRegisterConfig()
+                },
                 enabled = !isCheckingRegisterConfig,
                 modifier = Modifier
                     .fillMaxWidth()

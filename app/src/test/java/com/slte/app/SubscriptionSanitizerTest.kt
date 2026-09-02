@@ -13,7 +13,7 @@ import org.yaml.snakeyaml.Yaml
  */
 class SubscriptionSanitizerTest {
 
-    private val healthCheckUrl = "http://cp.cloudflare.com/generate_204"
+    private val healthCheckUrl = "https://www.gstatic.com/generate_204"
 
     /** 2 空格缩进模板（含已有 fake-ip-filter） */
     private val template2Space = """
@@ -157,7 +157,7 @@ class SubscriptionSanitizerTest {
         val doc = parseOk(out)
         val group = (doc["proxy-groups"] as List<Map<String, Any?>>)[0]
         assertEquals(healthCheckUrl, group["url"])
-        assertEquals(10_000, group["timeout"])
+        assertEquals(5_000, group["timeout"])
         assertEquals("url-test", group["type"])
     }
 
@@ -235,7 +235,7 @@ class SubscriptionSanitizerTest {
         val healthCheck = provider["health-check"] as Map<String, Any?>
         assertEquals(true, healthCheck["enable"])
         assertEquals(healthCheckUrl, healthCheck["url"])
-        assertEquals(10_000, healthCheck["timeout"])
+        assertEquals(5_000, healthCheck["timeout"])
         assertEquals(300, healthCheck["interval"])
         assertEquals(true, healthCheck["lazy"])
     }
@@ -294,7 +294,7 @@ class SubscriptionSanitizerTest {
         val doc = parseOk(out)
         val group = (doc["proxy-groups"] as List<Map<String, Any?>>)[0]
         assertEquals(healthCheckUrl, group["url"])
-        assertEquals(10_000, group["timeout"])
+        assertEquals(5_000, group["timeout"])
     }
 
     @Test

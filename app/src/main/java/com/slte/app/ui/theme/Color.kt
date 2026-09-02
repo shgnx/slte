@@ -38,9 +38,10 @@ val md_light_outlineVariant = Color(0xFFE8E8E8)
  *
  * 来源：Telegram Android Night 主题
  * 背景 #0E1621，卡片 #182533，主色 #6CB2F1
+ * 主色用于图标/装饰保持亮蓝；按钮底用深蓝 #2F6FBF 配白字（现代深色按钮）
  */
-val md_dark_primary = Color(0xFF6CB2F1)
-val md_dark_onPrimary = Color(0xFF0A2540)
+val md_dark_primary = Color(0xFF2F6FBF)
+val md_dark_onPrimary = Color(0xFFFFFFFF)
 val md_dark_primaryContainer = Color(0xFF1A3A5C)
 val md_dark_onPrimaryContainer = Color(0xFFD6EAFC)
 val md_dark_secondary = Color(0xFF708499)

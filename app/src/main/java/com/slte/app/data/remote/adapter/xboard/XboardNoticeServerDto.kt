@@ -7,7 +7,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
-// 公告 DTO
 
 @Serializable
 data class XboardNoticeData(
@@ -15,7 +14,6 @@ data class XboardNoticeData(
     val title: String = "",
     val content: String = "",
     val tags: List<String>? = null,
-    // Xboard 返回布尔开关
     val show: Boolean = true,
     @SerialName("img_url")
     val imgUrl: String? = null,

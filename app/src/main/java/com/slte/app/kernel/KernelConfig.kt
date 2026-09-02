@@ -73,7 +73,12 @@ class KernelConfig @Inject constructor(
         if (profiles.queryActive()?.uuid != uuid) {
             profiles.setActive(profile)
         }
-        injectDirectRule(uuid)
+        if (injectDirectRule(uuid)) {
+            context.sendBroadcastSelf(
+                Intent(Intents.ACTION_PROFILE_CHANGED)
+                    .putExtra(Intents.EXTRA_UUID, uuid.toString())
+            )
+        }
         uuid
     }
 

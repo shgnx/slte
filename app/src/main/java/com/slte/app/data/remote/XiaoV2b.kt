@@ -21,7 +21,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 
-/** 后端适配器工厂：新增后端在此加分支 */
+/** 后端适配器工厂：按后端类型分发到对应适配器实现 */
 object XiaoV2b {
 
     // coerceInputValues：后端返回 null 时用字段默认值

@@ -604,8 +604,8 @@ JNI_OnLoad(JavaVM *vm, void *reserved) {
 JNIEXPORT jstring JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeCoreVersion(JNIEnv *env, jobject thiz) {
     TRACE_METHOD();
-    
-    char* Version = make_String(GIT_VERSION);
 
-    return new_string(Version);
+    scoped_string response = queryVersion();
+
+    return new_string(response);
 }

@@ -79,7 +79,6 @@ fun SlteTheme(
     val colorScheme = if (darkTheme) DarkColors else LightColors
     val extendedColors = if (darkTheme) DarkExtendedColors else LightExtendedColors
 
-    // 系统栏图标与窗口背景跟随主题
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -102,7 +101,6 @@ fun SlteTheme(
         }
     }
 
-    // 禁用涟漪：点击反馈由震动承担
     CompositionLocalProvider(
         LocalExtendedColors provides extendedColors,
         LocalRippleConfiguration provides null

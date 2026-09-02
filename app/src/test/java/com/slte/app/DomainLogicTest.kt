@@ -2,7 +2,6 @@ package com.slte.app
 
 import com.slte.app.domain.model.SubscribeInfo
 import com.slte.app.domain.usecase.DaysUntilExpiryUseCase
-import com.slte.app.ui.screen.main.daysUntilReset
 import com.slte.app.utils.FormatUtils
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -63,28 +62,6 @@ class DomainLogicTest {
         // 当天到期 → 0（不足一天向下取整）
         val today = Instant.now().plusSeconds(60).epochSecond
         assertEquals(0, useCase(today))
-    }
-
-    @Test
-    fun `流量重置日剩余天数`() {
-        val today = LocalDate.of(2026, 8, 4)
-        // 无重置日配置
-        assertEquals(0, daysUntilReset(null, today))
-        assertEquals(0, daysUntilReset(0, today))
-        // 重置日在本月未到
-        assertEquals(6, daysUntilReset(10, today))
-        // 重置日今天 → 顺延到下月同日
-        assertEquals(31, daysUntilReset(4, today))
-        // 重置日已过 → 下月
-        assertEquals(28, daysUntilReset(1, today))
-        // 重置日取当月最后一天（8 月 31 天）
-        assertEquals(27, daysUntilReset(31, today))
-        // 30 天月 + 重置日 31 → 取当月最后一天（4 月 30 日）
-        val april = LocalDate.of(2026, 4, 10)
-        assertEquals(20, daysUntilReset(31, april))
-        // 2 月 + 重置日 31 → 取 2 月最后一天
-        val feb = LocalDate.of(2026, 2, 10)
-        assertEquals(18, daysUntilReset(31, feb))
     }
 
     @Test

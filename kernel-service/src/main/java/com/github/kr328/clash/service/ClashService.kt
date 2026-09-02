@@ -7,7 +7,6 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.clash.clashRuntime
 import com.github.kr328.clash.service.clash.module.*
 import com.github.kr328.clash.service.store.ServiceStore
-import com.github.kr328.clash.service.util.cancelAndJoinBlocking
 import com.github.kr328.clash.service.util.sendClashStarted
 import com.github.kr328.clash.service.util.sendClashStopped
 import kotlinx.coroutines.NonCancellable
@@ -94,8 +93,6 @@ class ClashService : BaseService() {
         StatusProvider.serviceRunning = false
 
         sendClashStopped(reason)
-
-        cancelAndJoinBlocking()
 
         Log.i("ClashService destroyed: ${reason ?: "successfully"}")
 

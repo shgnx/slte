@@ -1,0 +1,154 @@
+# SLTE 一键编译工作流（模板真源）
+#
+# 由 SLTE Builder 网站（https://<站点>）统一安装/更新到各 fork 仓库：
+#   网站「工作流模板」步骤 → 检测本文件是否存在/过期 → 一键写入官方最新版。
+#
+# 注入方式与 app/gradle.properties.example 完全对齐：
+#   表单 → workflow_dispatch inputs → 本文件注入 SLTE_* 环境变量 →
+#   app 模块构建脚本读取（环境变量优先于 app/gradle.properties）。
+# 所有凭据只经仓库 Secrets（SLTE_RELEASE_*），不出现于 inputs 或本文件。
+
+name: SLTE Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      appName:
+        description: 应用名称（桌面显示名）
+        required: true
+        default: SLTE
+      applicationId:
+        description: 包名
+        required: true
+        default: com.slte.app
+      versionName:
+        description: 版本号
+        required: true
+        default: 1.0.0
+      versionCode:
+        description: versionCode（留空自动生成）
+        required: false
+        default: ''
+      apiBaseUrl:
+        description: 面板 API 地址
+        required: true
+      apiType:
+        description: 面板版本
+        type: choice
+        options:
+          - xiaov2b
+          - xboard
+        default: xiaov2b
+      remoteConfigUrls:
+        description: 远程动态地址（逗号分隔，最多 3 个）
+        required: false
+        default: ''
+      allowedDomains:
+        description: 追加白名单域名（逗号分隔）
+        required: false
+        default: ''
+      notificationTitle:
+        description: 通知栏标题（留空跟随应用名）
+        required: false
+        default: ''
+      notificationTraffic:
+        description: 通知栏流量显示
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+        default: 'true'
+      buildType:
+        description: 构建类型（release 需仓库 Secrets 签名四件套）
+        type: choice
+        options:
+          - debug
+          - release
+        default: debug
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 安装 Android SDK / NDK
+        # kernel-core 的 C 桥（libbridge）需要 NDK 交叉编译；libclash.so 为预编译产物，无需 Go 工具链
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358"
+
+      - name: 还原发布签名
+        if: inputs.buildType == 'release'
+        env:
+          STORE_B64: ${{ secrets.SLTE_RELEASE_STORE_B64 }}
+        run: |
+          test -n "$STORE_B64" || { echo "::error::缺少 Secret SLTE_RELEASE_STORE_B64（release 构建必需，见网站签名面板）"; exit 1; }
+          echo "$STORE_B64" | base64 -d > release.keystore
+
+      - name: 应用自定义图标
+        # 检测到仓库 app/icon-source.png（网页上传或手动放置）时，用 ImageMagick 生成
+        # 五个密度 × 方形/圆形启动图标，覆盖 checkout 出来的 res/mipmap-*/ic_launcher*.png。
+        # 同名覆盖即可换图标，不改源码与 Manifest；未放置该文件时保持仓库默认图标。
+        if: hashFiles('app/icon-source.png') != ''
+        run: |
+          set -e
+          if ! command -v convert >/dev/null 2>&1; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
+          fi
+          for entry in "mdpi 48" "hdpi 72" "xhdpi 96" "xxhdpi 144" "xxxhdpi 192"; do
+            set -- $entry
+            density=$1
+            size=$2
+            dir="app/src/main/res/mipmap-$density"
+            # 居中裁成正方形并缩放到目标密度
+            convert app/icon-source.png -resize "${size}x${size}^" -gravity center \
+              -extent "${size}x${size}" "$dir/ic_launcher.png"
+            # 圆形遮罩生成 round 图标（launcher 圆形场景）
+            convert -size "${size}x${size}" xc:none -fill white \
+              -draw "circle $((size/2)),$((size/2)) $((size/2)),1" "$dir/_mask.png"
+            convert "$dir/ic_launcher.png" "$dir/_mask.png" -alpha off \
+              -compose CopyOpacity -composite "$dir/ic_launcher_round.png"
+            rm -f "$dir/_mask.png"
+          done
+
+      - name: 单元测试 + 编译
+        env:
+          SLTE_APP_NAME: ${{ inputs.appName }}
+          SLTE_APPLICATION_ID: ${{ inputs.applicationId }}
+          SLTE_API_BASE_URL: ${{ inputs.apiBaseUrl }}
+          SLTE_API_TYPE: ${{ inputs.apiType }}
+          SLTE_REMOTE_CONFIG_URLS: ${{ inputs.remoteConfigUrls }}
+          SLTE_ALLOWED_DOMAINS: ${{ inputs.allowedDomains }}
+          SLTE_NOTIFICATION_TITLE: ${{ inputs.notificationTitle }}
+          SLTE_NOTIFICATION_TRAFFIC: ${{ inputs.notificationTraffic }}
+          # release 签名（debug 构建不设，构建脚本自动跳过）
+          SLTE_RELEASE_STORE_FILE: ${{ inputs.buildType == 'release' && 'release.keystore' || '' }}
+          SLTE_RELEASE_STORE_PASSWORD: ${{ secrets.SLTE_RELEASE_STORE_PASSWORD }}
+          SLTE_RELEASE_KEY_ALIAS: ${{ secrets.SLTE_RELEASE_KEY_ALIAS }}
+          SLTE_RELEASE_KEY_PASSWORD: ${{ secrets.SLTE_RELEASE_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          # versionCode 留空时按时间戳自动生成（单调递增，可覆盖旧包）
+          VC="${{ inputs.versionCode }}"
+          if [ -z "$VC" ]; then VC=$(( $(date +%s) / 60 )); fi
+          export SLTE_VERSION_CODE="$VC"
+          export SLTE_VERSION_NAME="${{ inputs.versionName }}"
+          ./gradlew :app:testDebugUnitTest :app:assemble${{ inputs.buildType }}
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: SLTE-${{ inputs.versionName }}
+          path: app/build/outputs/apk/*/SLTE-*.apk
+          if-no-files-found: error
+          retention-days: 90

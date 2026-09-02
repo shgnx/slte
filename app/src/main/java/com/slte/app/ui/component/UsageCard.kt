@@ -59,7 +59,6 @@ fun UsageCard(
     isValid: Boolean,
     hasPlan: Boolean,
     daysUntilExpired: Int?,
-    daysUntilReset: Int,
     /** 到期日期文本（如 YYYY-MM-DD）；null 时回退"X天后到期" */
     expiredAtDate: String? = null,
     modifier: Modifier = Modifier,
@@ -161,20 +160,6 @@ fun UsageCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (hasPlan) {
-                        if (daysUntilReset > 0) {
-                            Text(
-                                text = stringResource(R.string.plan_reset_label, daysUntilReset),
-                                fontWeight = FontWeight.Light,
-                                fontSize = TextSizes.planMeta,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = " ${stringResource(R.string.plan_separator)} ",
-                                fontWeight = FontWeight.Light,
-                                fontSize = TextSizes.planMeta,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                         Text(
                             text = when {
                                 // 不限时套餐：无到期时间，不显示"今天到期"

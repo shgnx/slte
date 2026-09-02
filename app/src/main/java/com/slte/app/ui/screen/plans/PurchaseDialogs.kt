@@ -11,31 +11,13 @@ import com.slte.app.R
 import com.slte.app.ui.component.LocaleAwareAlertDialog
 
 
-/** 优惠券错误提示弹窗 */
-@Composable
-internal fun CouponErrorDialog(
-    errorMessageRes: Int,
-    onDismiss: () -> Unit
-) {
-    LocaleAwareAlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.dialog_confirm))
-            }
-        },
-        title = { Text(stringResource(R.string.purchase_coupon_hint)) },
-        text = { Text(stringResource(errorMessageRes)) }
-    )
-}
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ConfirmWarningDialog(
     onConfirm: () -> Unit,
     onCancel: () -> Unit
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     LocaleAwareAlertDialog(
         onDismissRequest = onCancel,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -51,12 +33,18 @@ internal fun ConfirmWarningDialog(
             Text(text = stringResource(R.string.purchase_warning_message))
         },
         dismissButton = {
-            TextButton(onClick = onCancel) {
+            TextButton(onClick = {
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                onCancel()
+            }) {
                 Text(stringResource(R.string.purchase_cancel))
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) {
+            TextButton(onClick = {
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                onConfirm()
+            }) {
                 Text(stringResource(R.string.purchase_confirm))
             }
         }
@@ -71,6 +59,7 @@ internal fun ExistingOrderErrorDialog(
     onGoToOrders: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     LocaleAwareAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -86,12 +75,18 @@ internal fun ExistingOrderErrorDialog(
             Text(text = stringResource(R.string.purchase_existing_order_message))
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = {
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                onDismiss()
+            }) {
                 Text(stringResource(R.string.purchase_cancel))
             }
         },
         confirmButton = {
-            TextButton(onClick = onGoToOrders) {
+            TextButton(onClick = {
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                onGoToOrders()
+            }) {
                 Text(stringResource(R.string.order_pay))
             }
         }
@@ -104,6 +99,7 @@ internal fun OrderCreateErrorDialog(
     errorMessageRes: Int,
     onDismiss: () -> Unit
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     LocaleAwareAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -119,7 +115,10 @@ internal fun OrderCreateErrorDialog(
             Text(text = stringResource(errorMessageRes))
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = {
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                onDismiss()
+            }) {
                 Text(stringResource(R.string.purchase_confirm))
             }
         }

@@ -3,8 +3,10 @@
 build/
 **/build/
 local.properties
+app/gradle.properties
 *.keystore
 *.jks
+*.p12
 .signing-env
 *.apk
 *.aab

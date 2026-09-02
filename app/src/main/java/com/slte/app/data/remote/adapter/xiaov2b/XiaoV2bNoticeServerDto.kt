@@ -7,7 +7,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
-// 公告 DTO
 
 @Serializable
 data class XiaoV2bNoticeData(
@@ -32,7 +31,6 @@ data class XiaoV2bNoticeData(
     )
 }
 
-// 服务器节点 DTO
 
 @Serializable
 data class XiaoV2bServerData(

@@ -38,7 +38,6 @@ fun FlagPlaceholder(
     val flagModifier = if (circular) {
         modifier.size(size).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)
     } else {
-        // 按国旗 4:3 比例定尺寸，不裁剪不加背景
         modifier.size(width = size, height = size * FlagHeightRatio)
     }
     SubcomposeAsyncImage(
@@ -87,7 +86,7 @@ fun SpecialNodeIcon(
             text = icon,
             fontSize = FlagFontSize,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.onPrimaryContainer
         )
     }
 }

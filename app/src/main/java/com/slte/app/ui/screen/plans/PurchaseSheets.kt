@@ -30,7 +30,10 @@ import androidx.compose.ui.text.font.FontWeight
 import com.slte.app.R
 import com.slte.app.domain.model.PlanInfo
 import com.slte.app.ui.component.AppLocaleContent
+import com.slte.app.ui.component.formatNegCurrency
+import com.slte.app.ui.component.formatCurrency
 import com.slte.app.ui.component.LocalAppLocale
+import com.slte.app.ui.theme.SlteColors
 import com.slte.app.ui.theme.SlteShapes
 import com.slte.app.ui.theme.TextSizes
 import com.slte.app.utils.Dimens
@@ -51,6 +54,7 @@ internal fun SelectPeriodSheet(
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -58,7 +62,6 @@ internal fun SelectPeriodSheet(
         containerColor = MaterialTheme.colorScheme.surface,
         shape = SlteShapes.large
     ) {
-        // 弹窗是独立窗口组合，LocalContext 不随根组件更新，需在此按语言重建
         AppLocaleContent(locale = LocalAppLocale.current) {
             Column(
                 modifier = Modifier
@@ -98,11 +101,11 @@ internal fun SelectPeriodSheet(
 
             PriceRow(
                 label = stringResource(R.string.order_price),
-                value = FormatUtils.currency(step.priceCents)
+                value = formatCurrency(step.priceCents)
             )
             PriceRow(
                 label = stringResource(R.string.purchase_coupon_discount),
-                value = if (step.couponDiscount > 0) FormatUtils.negCurrency(step.couponDiscount)
+                value = if (step.couponDiscount > 0) formatNegCurrency(step.couponDiscount)
                         else FormatUtils.balance(step.couponDiscount)
             )
 
@@ -110,7 +113,10 @@ internal fun SelectPeriodSheet(
 
             val canConfirm = step.couponCode.isBlank() || step.couponVerified
             androidx.compose.material3.Surface(
-                onClick = { if (canConfirm) onConfirmOrder() },
+                onClick = {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    if (canConfirm) onConfirmOrder()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(Dimens.buttonHeight),
@@ -124,7 +130,7 @@ internal fun SelectPeriodSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "${stringResource(R.string.purchase_confirm_order)} ${FormatUtils.currency(step.finalPrice)}",
+                        text = "${stringResource(R.string.purchase_confirm_order)} ${formatCurrency(step.finalPrice)}",
                         fontSize = TextSizes.actionTitle,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -139,7 +145,7 @@ internal fun SelectPeriodSheet(
 
 /**
  * 周期选择：2x2 网格卡片布局，全部周期展示（超出 4 个自动换行）。
- * 选中为深色填充（黑）+ 白字，未选为浅灰填充 + 深字。
+ * 选中为主色填充（蓝）+ 白字，未选为浅灰填充 + 深字。
  */
 @Composable
 internal fun PeriodGrid(
@@ -147,6 +153,7 @@ internal fun PeriodGrid(
     selectedPeriod: String,
     onSelect: (String) -> Unit
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val rows = periods.chunked(2)
 
     Column(
@@ -161,7 +168,10 @@ internal fun PeriodGrid(
                     val selected = selectedPeriod == pp.period
                     val price = pp.price.toLongOrNull()?.toInt() ?: 0
                     androidx.compose.material3.Surface(
-                        onClick = { onSelect(pp.period) },
+                        onClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            onSelect(pp.period)
+                        },
                         modifier = Modifier.weight(1f),
                         shape = SlteShapes.medium,
                         color = if (selected) MaterialTheme.colorScheme.primary
@@ -183,14 +193,13 @@ internal fun PeriodGrid(
                             )
                             Spacer(modifier = Modifier.height(Dimens.spacingTiny))
                             Text(
-                                text = FormatUtils.currency(price),
+                                text = formatCurrency(price),
                                 fontSize = TextSizes.actionTitle,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
                     }
                 }
-                // 如果这一行只有 1 个，补一个占位保持权重
                 if (row.size == 1) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
@@ -200,7 +209,7 @@ internal fun PeriodGrid(
 }
 
 /**
- * 优惠券输入区：浅灰容器 + 标签图标 + 输入框 + 验证按钮。
+ * 优惠券输入区：描边容器 + 标签图标 + 输入框 + 验证按钮。
  * 验证结果通过 Toast 提示，不在输入框下方显示错误。
  */
 @Composable
@@ -210,10 +219,15 @@ internal fun CouponInput(
     onVerify: () -> Unit,
     isVerifying: Boolean
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     androidx.compose.material3.Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = SlteShapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(
+            Dimens.dividerThickness,
+            MaterialTheme.colorScheme.outline
+        ),
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
     ) {
         Row(
@@ -225,7 +239,8 @@ internal fun CouponInput(
             Icon(
                 imageVector = Icons.Outlined.ConfirmationNumber,
                 contentDescription = stringResource(R.string.purchase_coupon_hint),
-                modifier = Modifier.size(Dimens.topBarActionIconSize)
+                modifier = Modifier.size(Dimens.topBarActionIconSize),
+                tint = SlteColors.current.iconBlue
             )
             Spacer(modifier = Modifier.width(Dimens.spacingSm))
             androidx.compose.foundation.text.BasicTextField(
@@ -250,7 +265,10 @@ internal fun CouponInput(
             )
             Spacer(modifier = Modifier.width(Dimens.spacingSm))
             TextButton(
-                onClick = onVerify,
+                onClick = {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    onVerify()
+                },
                 enabled = code.isNotBlank()
             ) {
                 if (isVerifying) {

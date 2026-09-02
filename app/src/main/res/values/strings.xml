@@ -48,7 +48,6 @@
     <string name="plan_expire_date_label">%1$s 到期</string>
     <string name="plan_expired_today">今天到期</string>
     <string name="plan_no_expiry">不限时</string>
-    <string name="plan_reset_label">%d天后流量重置</string>
     <string name="plan_percent">%d%%</string>
     <string name="plan_separator">·</string>
     <string name="plan_empty">暂无套餐</string>
@@ -99,6 +98,7 @@
 
     <!-- Invite -->
     <string name="invite_title">邀请返利</string>
+    <string name="currency_symbol">¥</string>
     <string name="invite_stat_registered">已注册用户</string>
     <string name="invite_stat_commission_rate">佣金比例</string>
     <string name="invite_stat_total">累计佣金</string>
@@ -137,6 +137,7 @@
     <string name="invite_success_withdraw">提现申请已提交</string>
     <string name="invite_success_generate">邀请码已生成</string>
     <string name="invite_error_generate">生成失败</string>
+    <string name="invite_error_generate_limit">已达邀请码创建上限</string>
     <string name="invite_error_transfer">转账失败</string>
     <string name="invite_error_withdraw">提现失败</string>
     <!-- Notice -->
@@ -157,8 +158,6 @@
     <string name="about_app_desc">SLTE 是一款基于 mihomo 内核的轻量代理客户端</string>
     <string name="about_app_version">应用版本</string>
     <string name="about_kernel_version">内核版本</string>
-    <!-- 内核编译标记（随包编译，非在线下载）；与 kernel-core/src/main/cpp/version.h 保持一致，升级内核时同步 -->
-    <string name="about_kernel_version_value">mihomo_custom_20260731</string>
     <string name="about_check_update">检查更新</string>
     <string name="about_latest">已是最新版本</string>
     <string name="about_update_failed">检查更新失败</string>
@@ -228,7 +227,7 @@
     <string name="plans_subscribe">订阅</string>
 
     <!-- Purchase Flow -->
-    <string name="purchase_coupon_hint">输入优惠券码</string>
+    <string name="purchase_coupon_hint">有优惠券？</string>
     <string name="purchase_verify">验证</string>
     <string name="purchase_coupon_applied">优惠券已生效</string>
     <string name="purchase_coupon_discount">优惠券</string>

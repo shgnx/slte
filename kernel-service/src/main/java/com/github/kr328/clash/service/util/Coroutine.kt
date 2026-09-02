@@ -12,3 +12,15 @@ fun CoroutineScope.cancelAndJoinBlocking() {
         scope.coroutineContext.job.join()
     }
 }
+
+fun cancelAndJoinBlockingAsync(vararg scopes: CoroutineScope) {
+    val targets = scopes.distinct()
+    if (targets.isEmpty()) return
+
+    Thread {
+        targets.forEach { it.cancelAndJoinBlocking() }
+    }.apply {
+        isDaemon = true
+        start()
+    }
+}

@@ -28,6 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import com.slte.app.R
 import com.slte.app.domain.model.PaymentMethod
 import com.slte.app.ui.component.AppLocaleContent
+import com.slte.app.ui.component.formatNegCurrency
+import com.slte.app.ui.component.formatCurrency
 import com.slte.app.ui.component.LocalAppLocale
 import com.slte.app.ui.theme.SlteShapes
 import com.slte.app.ui.theme.TextSizes
@@ -47,7 +49,7 @@ internal fun OrderPaymentSheet(
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val haptic = LocalHapticFeedback.current
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -55,7 +57,6 @@ internal fun OrderPaymentSheet(
         containerColor = MaterialTheme.colorScheme.surface,
         shape = SlteShapes.large
     ) {
-        // 弹窗是独立窗口组合，LocalContext 不随根组件更新，需在此按语言重建
         AppLocaleContent(locale = LocalAppLocale.current) {
             Column(
                 modifier = Modifier
@@ -103,22 +104,22 @@ internal fun OrderPaymentSheet(
                         OrderInfoDivider()
                         OrderInfoRow(
                             label = stringResource(R.string.order_price),
-                            value = FormatUtils.currency(step.totalAmount)
+                            value = formatCurrency(step.totalAmount)
                         )
                         OrderInfoDivider()
                         OrderInfoRow(
                             label = stringResource(R.string.purchase_balance),
-                            value = FormatUtils.negCurrency(step.balanceAmount)
+                            value = formatNegCurrency(step.balanceAmount)
                         )
                         OrderInfoDivider()
                         OrderInfoRow(
                             label = stringResource(R.string.purchase_coupon_discount),
-                            value = FormatUtils.negCurrency(step.couponDiscount)
+                            value = formatNegCurrency(step.couponDiscount)
                         )
                         OrderInfoDivider()
                         OrderInfoRow(
                             label = stringResource(R.string.purchase_handling),
-                            value = FormatUtils.currency(step.handlingAmount)
+                            value = formatCurrency(step.handlingAmount)
                         )
                     }
                 }
@@ -154,7 +155,10 @@ internal fun OrderPaymentSheet(
                     horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
                 ) {
                     OutlinedButton(
-                        onClick = onDismiss,
+                        onClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            onDismiss()
+                        },
                         modifier = Modifier
                             .weight(1f)
                             .height(Dimens.buttonHeight),
@@ -233,7 +237,6 @@ internal fun PaymentMethodList(
                         modifier = Modifier.weight(1f)
                     )
                 }
-                // 单数时补占位保持两列对齐
                 if (row.size == 1) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
@@ -250,8 +253,12 @@ private fun PaymentMethodCell(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     androidx.compose.material3.Surface(
-        onClick = onClick,
+        onClick = {
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+            onClick()
+        },
         modifier = modifier.height(Dimens.paymentMethodCellHeight),
         shape = SlteShapes.medium,
         color = if (selected) MaterialTheme.colorScheme.primary

@@ -113,7 +113,6 @@ fun ProfileScreen(
                         hasPlan = hasPlan,
                         daysUntilExpired = data.daysUntilExpired,
                         expiredAtDate = info?.expiredAt?.takeIf { it > 0L }?.let { FormatUtils.formatExpiryDate(it) },
-                        daysUntilReset = data.daysUntilReset,
                         actionText = stringResource(
                             if (hasPlan) R.string.plan_renew_button else R.string.plan_buy_button
                         ),

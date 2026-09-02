@@ -13,9 +13,9 @@ class ConfigCacheTest {
     fun `缓存条目序列化往返保持字段完整`() {
         val cached = CachedConfig(
             config = RemoteConfigData(
-                apiBaseUrl = "https://app.slte.me",
-                apiBaseUrls = listOf("https://app.slte.me"),
-                directDomains = listOf("slte.me")
+                apiBaseUrl = "https://api.example.com",
+                apiBaseUrls = listOf("https://api.example.com"),
+                directDomains = listOf("example.com")
             ),
             version = "1.2",
             fetchedAt = 12345L,
@@ -30,7 +30,7 @@ class ConfigCacheTest {
         assertEquals(12345L, decoded.fetchedAt)
         assertEquals("https://cfg.example.com/config.json", decoded.sourceUrl)
         assertEquals("\"abc123\"", decoded.etag)
-        assertEquals("https://app.slte.me", decoded.config.apiBaseUrl)
+        assertEquals("https://api.example.com", decoded.config.apiBaseUrl)
     }
 
     @Test

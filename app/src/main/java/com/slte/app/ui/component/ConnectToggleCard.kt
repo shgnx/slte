@@ -57,7 +57,6 @@ fun ConnectToggleCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = Dimens.cardElevation)
     ) {
-        // Box 与卡片同高，contentAlignment 保证内容位于卡片正中间
         Box(
             modifier = Modifier
                 .fillMaxWidth()

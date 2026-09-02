@@ -35,13 +35,13 @@ fun ProxyModeSheet(
     onSelect: (String) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface
     ) {
-        // 弹窗是独立窗口组合，LocalContext 不随根组件更新，需在此按语言重建
         AppLocaleContent(locale = LocalAppLocale.current) {
             Column(
                 modifier = Modifier
@@ -72,6 +72,7 @@ fun ProxyModeSheet(
                             .selectable(
                                 selected = selected,
                                 onClick = {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                                     onSelect(option.mode)
                                     onDismiss()
                                 }

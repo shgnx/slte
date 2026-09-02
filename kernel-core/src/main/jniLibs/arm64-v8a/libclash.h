@@ -137,6 +137,7 @@ extern int verityPublicKeys(c_string publicKeys);
 extern void subscribeLogcat(void* remote);
 extern void coreInit(c_string home, c_string versionName, c_string gitVersion, int sdkVersion);
 extern void reset(void);
+extern char* queryVersion(void);
 extern void forceGc(void);
 extern char* startHttp(c_string listenAt);
 extern void stopHttp(void);

@@ -8,7 +8,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
-// 套餐购买请求体
 
 @Serializable
 data class XiaoV2bCreateOrderRequest(
@@ -75,7 +74,6 @@ data class XiaoV2bOrderData(
     )
 }
 
-// 套餐购买响应体
 
 @Serializable
 data class XiaoV2bCouponData(

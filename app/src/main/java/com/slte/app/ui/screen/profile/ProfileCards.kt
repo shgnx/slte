@@ -99,6 +99,7 @@ internal fun InfoRow(
 
 @Composable
 internal fun ErrorCard(messageRes: Int, onRetry: () -> Unit) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = SlteShapes.large,
@@ -129,7 +130,10 @@ internal fun ErrorCard(messageRes: Int, onRetry: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(Dimens.spacingXl))
             OutlinedButton(
-                onClick = onRetry,
+                onClick = {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    onRetry()
+                },
                 shape = SlteShapes.medium,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -162,9 +166,6 @@ internal fun LoadingCard() {
     }
 }
 
-/**
- * 二级导航入口卡片：左侧图标 + 标题 + 右侧箭头。
- */
 @Composable
 internal fun NavigateCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -215,13 +216,14 @@ internal fun NavigateCard(
     }
 }
 
-/**
- * 退出登录入口卡片：红色图标 + 红色文字。
- */
 @Composable
 internal fun LogoutCard(onClick: () -> Unit) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Card(
-        onClick = onClick,
+        onClick = {
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+            onClick()
+        },
         modifier = Modifier.fillMaxWidth(),
         shape = SlteShapes.medium,
         colors = CardDefaults.cardColors(

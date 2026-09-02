@@ -44,7 +44,6 @@ interface XiaoV2bUserRetrofit {
     @GET("user/order/fetch")
     suspend fun fetchOrders(): XiaoV2bResponse<List<XiaoV2bOrderData>>
 
-    // 套餐购买
 
     @POST("user/order/save")
     suspend fun createOrder(
@@ -74,7 +73,6 @@ interface XiaoV2bUserRetrofit {
         @Body request: XiaoV2bCancelOrderRequest
     ): XiaoV2bResponse<Boolean>
 
-    // 邀请推广
 
     @GET("user/invite/fetch")
     suspend fun fetchInviteInfo(): XiaoV2bResponse<XiaoV2bInviteData>
@@ -99,7 +97,6 @@ interface XiaoV2bUserRetrofit {
         @Body request: XiaoV2bWithdrawRequest
     ): XiaoV2bResponse<Boolean>
 
-    // 公告通知
 
     @GET("user/notice/fetch")
     suspend fun fetchNotices(

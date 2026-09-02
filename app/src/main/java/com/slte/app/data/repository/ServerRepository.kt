@@ -35,7 +35,6 @@ class ServerRepository @Inject constructor(
         }
         nodes
     }.recoverCatching { e ->
-        // 非强制刷新失败时回退本地缓存；强制刷新失败时如实上报
         if (force) throw e
         val cached = sessionStore.getServerNodes()
         if (cached != null) {

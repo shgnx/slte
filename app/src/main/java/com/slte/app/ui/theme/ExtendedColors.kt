@@ -25,6 +25,9 @@ data class ExtendedColors(
 private val BrandGreenLight = Color(0xFF4BCB1C)
 private val BrandGreenDark = Color(0xFF6DC26D)
 
+/** 深色主题图标亮蓝：与按钮底（深蓝 primary）区分，图标/装饰保持高亮 */
+private val BrandBlueDark = Color(0xFF6CB2F1)
+
 val LightExtendedColors = ExtendedColors(
     inputFieldBackground = Color(0xFFFFFFFF),
     inputFieldPlaceholder = Color(0xFFA8A8A8),
@@ -43,7 +46,7 @@ val LightExtendedColors = ExtendedColors(
 val DarkExtendedColors = ExtendedColors(
     inputFieldBackground = Color(0xFF1F2936),
     inputFieldPlaceholder = Color(0xFF5A6175),
-    iconBlue = md_dark_primary,
+    iconBlue = BrandBlueDark,
     iconBlueBg = Color(0x1A6CB2F1),
     iconGreen = BrandGreenDark,
     iconGreenBg = Color(0x1A6DC26D),

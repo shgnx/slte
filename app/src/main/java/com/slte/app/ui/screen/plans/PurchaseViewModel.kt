@@ -64,8 +64,8 @@ class PurchaseViewModel @Inject constructor(
             _step.value = current.copy(
                 couponCode = code,
                 couponVerified = false,
-                couponErrorRes = null,
-                couponDiscount = 0
+                couponDiscount = 0,
+                isVerifying = false
             )
         }
     }
@@ -77,10 +77,7 @@ class PurchaseViewModel @Inject constructor(
         if (current.couponCode.isBlank()) return
         if (current.isVerifying) return
 
-        _step.value = current.copy(
-            isVerifying = true,
-            couponErrorRes = null
-        )
+        _step.value = current.copy(isVerifying = true)
         viewModelScope.launch {
             orderRepository.checkCoupon(
                 code = current.couponCode.trim(),
@@ -94,31 +91,21 @@ class PurchaseViewModel @Inject constructor(
                     _step.value = state.copy(
                         isVerifying = false,
                         couponVerified = true,
-                        couponDiscount = discount,
-                        couponErrorRes = null
+                        couponDiscount = discount
                     )
                     _toastRes.value = R.string.purchase_coupon_applied
                 },
                 onFailure = { e ->
                     val state = _step.value as? PurchaseStep.SelectPeriod
                     if (state == null || state.couponCode != current.couponCode) return@fold
-                    // 后端消息只参与关键词映射，展示本地文案（不直显后端原始消息）
                     _step.value = state.copy(
                         isVerifying = false,
                         couponVerified = false,
-                        couponDiscount = 0,
-                        couponErrorRes = ErrorMessages.mapOrderError(e.message)
+                        couponDiscount = 0
                     )
+                    _toastRes.value = ErrorMessages.mapOrderError(e.message)
                 }
             )
-        }
-    }
-
-    /** 关闭优惠券错误弹窗 */
-    fun dismissCouponError() {
-        val current = _step.value
-        if (current is PurchaseStep.SelectPeriod) {
-            _step.value = current.copy(couponErrorRes = null)
         }
     }
 
@@ -128,7 +115,7 @@ class PurchaseViewModel @Inject constructor(
         if (current !is PurchaseStep.SelectPeriod) return
         // 填了优惠券但未验证：不允许进入下一步
         if (current.couponCode.isNotBlank() && !current.couponVerified) {
-            _step.value = current.copy(couponErrorRes = R.string.purchase_coupon_verify_first)
+            _toastRes.value = R.string.purchase_coupon_verify_first
             return
         }
         _step.value = current.copy(showWarning = true)
@@ -142,44 +129,52 @@ class PurchaseViewModel @Inject constructor(
         }
     }
 
+    private var creatingOrder = false
+
     /** 确认警告 → 创建订单 → 关闭所有 → 返回订单号给调用方 */
     private val _createdTradeNo = MutableStateFlow<String?>(null)
     val createdTradeNo: StateFlow<String?> = _createdTradeNo.asStateFlow()
 
     fun confirmWarning() {
+        if (creatingOrder) return
         val current = _step.value
         if (current !is PurchaseStep.SelectPeriod) return
 
         val coupon = current.couponCode.takeIf { it.isNotBlank() && current.couponVerified }
         if (current.couponCode.isNotBlank() && !current.couponVerified) {
-            _step.value = current.copy(couponErrorRes = R.string.purchase_coupon_verify_first)
+            _toastRes.value = R.string.purchase_coupon_verify_first
             return
         }
+        creatingOrder = true
         viewModelScope.launch {
-            orderRepository.createOrder(
-                planId = current.plan.id.toInt(),
-                period = current.selectedPeriod,
-                couponCode = coupon
-            ).fold(
-                onSuccess = { result ->
-                    _step.value = PurchaseStep.Idle
-                    _createdTradeNo.value = result.tradeNo
-                },
-                onFailure = { e ->
-                    val msg = e.message ?: ""
-                    val errorMessageRes = ErrorMessages.mapOrderError(msg)
-                    if (ErrorMessages.isPendingOrderMessage(msg)) {
-                        _step.value = PurchaseStep.ExistingOrderError(
-                            errorMessageRes = errorMessageRes,
-                            plan = current.plan,
-                            period = current.selectedPeriod,
-                            couponCode = coupon
-                        )
-                    } else {
-                        _step.value = PurchaseStep.OrderCreateError(errorMessageRes = errorMessageRes)
+            try {
+                orderRepository.createOrder(
+                    planId = current.plan.id.toInt(),
+                    period = current.selectedPeriod,
+                    couponCode = coupon
+                ).fold(
+                    onSuccess = { result ->
+                        _step.value = PurchaseStep.Idle
+                        _createdTradeNo.value = result.tradeNo
+                    },
+                    onFailure = { e ->
+                        val msg = e.message ?: ""
+                        val errorMessageRes = ErrorMessages.mapOrderError(msg)
+                        if (ErrorMessages.isPendingOrderMessage(msg)) {
+                            _step.value = PurchaseStep.ExistingOrderError(
+                                errorMessageRes = errorMessageRes,
+                                plan = current.plan,
+                                period = current.selectedPeriod,
+                                couponCode = coupon
+                            )
+                        } else {
+                            _step.value = PurchaseStep.OrderCreateError(errorMessageRes = errorMessageRes)
+                        }
                     }
-                }
-            )
+                )
+            } finally {
+                creatingOrder = false
+            }
         }
     }
 

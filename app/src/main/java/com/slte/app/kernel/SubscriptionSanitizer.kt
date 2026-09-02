@@ -9,11 +9,11 @@ import com.slte.app.utils.AppLog
  */
 object SubscriptionSanitizer {
 
-    /** 测速 URL：Cloudflare 204 探活路径全球普遍可达，替代 mihomo 默认 gstatic（部分区域高延迟/超时） */
-    private const val HEALTH_CHECK_URL = "http://cp.cloudflare.com/generate_204"
+    /** 测速 URL：官方内核默认（HTTPS），与主流客户端一致；明文 HTTP 探活易被节点/落地限制导致超时 */
+    private const val HEALTH_CHECK_URL = "https://www.gstatic.com/generate_204"
 
-    /** 测速超时（毫秒）：与主流客户端一致，避免弱网误判超时 */
-    private const val HEALTH_CHECK_TIMEOUT_MS = 10_000
+    /** 测速超时（毫秒）：官方内核默认值 */
+    private const val HEALTH_CHECK_TIMEOUT_MS = 5_000
 
     /** 需要测速配置的组类型：仅这些类型消费 url/timeout */
     private val HEALTH_CHECK_GROUP_TYPES = setOf("url-test", "fallback", "load-balance")
@@ -52,7 +52,7 @@ object SubscriptionSanitizer {
      * 清洗订阅 YAML。
      *
      * @param domains 需要直连的自家域名列表（如 example.com），全部注入直连规则与 fake-ip 豁免
-     * @return 清洗后的 YAML；异常时返回原文，不阻断订阅导入
+     * @return 清洗后的 YAML；异常时返回原文，不阻断订阅导入（行编辑出错时宁可保留原配置也不破坏订阅）。
      */
     fun sanitize(text: String, domains: List<String>): String {
         if (text.isBlank()) return text
@@ -66,7 +66,6 @@ object SubscriptionSanitizer {
             validDomains.forEach { injectFakeIpFilter(lines, it) }
             lines.joinToString("\n")
         } catch (_: Exception) {
-            // 防御：行编辑逻辑出错时返回原文，宁可保留原配置也不破坏订阅
             AppLog.w("SLTE-Sanitizer", "sanitize 异常回退原文，内核补丁链兜底")
             text
         }

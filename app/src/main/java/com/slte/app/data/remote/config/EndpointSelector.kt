@@ -117,7 +117,6 @@ class EndpointSelector @Inject constructor() {
         val currentLatency = currentPrimary?.let { healthy[it] }
 
         if (!currentOpen && currentLatency != null && currentPrimary in candidates) {
-            // 主地址健康且有延迟数据：仅在存在明显更快的候选时才切换
             val faster = healthy.entries
                 .filter { it.key != currentPrimary }
                 .filter { EndpointHealthRules.shouldSwitchPrimary(currentLatency, it.value) }
@@ -125,7 +124,6 @@ class EndpointSelector @Inject constructor() {
             return faster?.key ?: currentPrimary
         }
 
-        // 主地址不健康或无延迟数据：选延迟最小的候选作为新主地址
         return healthy.minByOrNull { it.value }?.key ?: candidates.first()
     }
 

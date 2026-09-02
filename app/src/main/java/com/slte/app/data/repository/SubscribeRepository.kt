@@ -30,7 +30,6 @@ class SubscribeRepository @Inject constructor(
     private val sessionStore: SessionStore,
     private val sessionManager: SessionManager,
 ) {
-    // 内存缓存
     private var cachedSubscribeInfo: SubscribeInfo? = null
     private var subscribeInfoTimestamp: Long = 0L
     private var cachedUserInfo: User? = null
@@ -39,12 +38,10 @@ class SubscribeRepository @Inject constructor(
         const val CACHE_TTL_MS = 30_000L
     }
 
-    // 缓存并发控制
     private val subscribeMutex = Mutex()
     private val userMutex = Mutex()
 
     init {
-        // 登出/401 时清理内存缓存（磁盘缓存由 SessionManager.clearSession 一并清除）
         sessionManager.logoutEvents
             .onEach { invalidateCache() }
             .launchIn(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
@@ -67,8 +64,12 @@ class SubscribeRepository @Inject constructor(
                 return@withLock Result.success(recheckCached)
             }
             val result = runApi {
+                val session = sessionManager.sessionState.value as? SessionState.LoggedIn
+                    ?: error("会话已失效")
                 val info = authApi.fetchSubscribeInfo().toDomainSubscribeInfo()
-                check(sessionManager.sessionState.value is SessionState.LoggedIn) { "会话已失效" }
+                val current = sessionManager.sessionState.value as? SessionState.LoggedIn
+                    ?: error("会话已失效")
+                check(current.user.authData == session.user.authData) { "会话已切换" }
                 cachedSubscribeInfo = info
                 subscribeInfoTimestamp = System.currentTimeMillis()
                 sessionStore.saveSubscribeInfo(info)
@@ -104,10 +105,13 @@ class SubscribeRepository @Inject constructor(
                 return@withLock Result.success(recheckCached)
             }
             val result = runApi {
-                val current = sessionManager.sessionState.value as SessionState.LoggedIn
+                val session = sessionManager.sessionState.value as? SessionState.LoggedIn
+                    ?: error("会话已失效")
                 val info = authApi.fetchUserInfo()
-                check(sessionManager.sessionState.value is SessionState.LoggedIn) { "会话已失效" }
-                val user = current.user.copy(
+                val current = sessionManager.sessionState.value as? SessionState.LoggedIn
+                    ?: error("会话已失效")
+                check(current.user.authData == session.user.authData) { "会话已切换" }
+                val user = session.user.copy(
                     email = info.email,
                     balance = FormatUtils.balance(info.balance),
                     remindExpire = info.remindExpire,

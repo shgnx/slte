@@ -118,7 +118,7 @@ private fun NoticeList(
             vertical = Dimens.spacingLg
         )
     ) {
-        items(notices, key = { it.id }) { notice ->
+        items(notices.distinctBy { it.id }, key = { it.id }) { notice ->
             NoticeCard(
                 notice = notice,
                 onClick = { onClick(notice) }
@@ -138,6 +138,7 @@ private fun NoticeCard(
     notice: Notice,
     onClick: () -> Unit
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = SlteShapes.large,
@@ -145,7 +146,10 @@ private fun NoticeCard(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = Dimens.cardElevation),
-        onClick = onClick
+        onClick = {
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+            onClick()
+        }
     ) {
         Column(
             modifier = Modifier
@@ -310,6 +314,7 @@ private fun ErrorContent(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -328,7 +333,10 @@ private fun ErrorContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(Dimens.spacingLg))
-        FilledTonalButton(onClick = onRetry) {
+        FilledTonalButton(onClick = {
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+            onRetry()
+        }) {
             Text(text = stringResource(R.string.notice_retry))
         }
     }

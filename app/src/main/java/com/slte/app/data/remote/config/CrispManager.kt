@@ -35,13 +35,23 @@ class CrispManager @Inject constructor() {
         override fun onNotificationReceived(notification: Map<String, String>) = Unit
     }
 
+    /**
+     * 初始化/更新客服配置：可重复调用，远程配置就绪或更新后自动生效。
+     * 配置不可用或与当前一致时跳过；websiteId 变化时重新配置 SDK。
+     */
     fun init(context: Context, config: CrispConfig) {
+        if (!config.enabled || config.websiteId.isNotBlank().not()) return
+        if (initialized && this.config?.websiteId == config.websiteId) return
         this.config = config
-        if (config.enabled && config.websiteId.isNotBlank()) {
-            Crisp.configure(context.applicationContext, config.websiteId)
-            Crisp.addCallback(sessionCallback)
-            initialized = true
+        if (initialized) {
+            // websiteId 变化：重置旧会话后重新配置，避免串到旧网站
+            clearUser()
         }
+        Crisp.configure(context.applicationContext, config.websiteId)
+        if (!initialized) {
+            Crisp.addCallback(sessionCallback)
+        }
+        initialized = true
     }
 
     fun setUser(email: String?, nickname: String?) {

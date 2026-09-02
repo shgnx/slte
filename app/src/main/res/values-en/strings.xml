@@ -48,7 +48,6 @@
     <string name="plan_expire_date_label">Expires %1$s</string>
     <string name="plan_expired_today">Expires today</string>
     <string name="plan_no_expiry">No expiry</string>
-    <string name="plan_reset_label">Reset in %d days</string>
     <string name="plan_percent">%d%%</string>
     <string name="plan_separator">·</string>
     <string name="plan_empty">No plans yet</string>
@@ -99,6 +98,7 @@
 
     <!-- Invite -->
     <string name="invite_title">Invite</string>
+    <string name="currency_symbol">¥</string>
     <string name="invite_stat_registered">Registered users</string>
     <string name="invite_stat_commission_rate">Commission rate</string>
     <string name="invite_stat_total">Total commission</string>
@@ -137,6 +137,7 @@
     <string name="invite_success_withdraw">Withdrawal submitted</string>
     <string name="invite_success_generate">Code generated</string>
     <string name="invite_error_generate">Generation failed</string>
+    <string name="invite_error_generate_limit">Invite code limit reached</string>
     <string name="invite_error_transfer">Transfer failed</string>
     <string name="invite_error_withdraw">Withdrawal failed</string>
     <!-- Notice -->
@@ -157,8 +158,6 @@
     <string name="about_app_desc">Lightweight mihomo-based proxy client</string>
     <string name="about_app_version">App version</string>
     <string name="about_kernel_version">Core version</string>
-    <!-- 内核编译标记（随包编译，非在线下载）；与 kernel-core/src/main/cpp/version.h 保持一致，升级内核时同步 -->
-    <string name="about_kernel_version_value">mihomo_custom_20260731</string>
     <string name="about_check_update">Check updates</string>
     <string name="about_latest">Up to date</string>
     <string name="about_update_failed">Update check failed</string>
@@ -228,7 +227,7 @@
     <string name="plans_subscribe">Subscribe</string>
 
     <!-- Purchase Flow -->
-    <string name="purchase_coupon_hint">Coupon code</string>
+    <string name="purchase_coupon_hint">Have a coupon?</string>
     <string name="purchase_verify">Verify</string>
     <string name="purchase_coupon_applied">Coupon applied</string>
     <string name="purchase_coupon_discount">Coupon</string>

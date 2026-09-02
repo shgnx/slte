@@ -37,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slte.app.R
 import com.slte.app.domain.model.PlanInfo
 import com.slte.app.ui.component.RichText
+import com.slte.app.ui.component.formatCurrency
 import com.slte.app.ui.component.EmptyState
 import com.slte.app.ui.component.LottieLoadingIcon
 import com.slte.app.ui.component.SltePullRefresh
@@ -121,7 +122,7 @@ fun PlansScreen(
                         verticalArrangement = Arrangement.spacedBy(Dimens.dashboardCardSpacing),
                         contentPadding = PaddingValues(vertical = Dimens.dashboardScreenPaddingV)
                     ) {
-                        items(data.plans, key = { it.id }) { plan ->
+                        items(data.plans.distinctBy { it.id }, key = { it.id }) { plan ->
                             PlanCard(
                                 plan = plan,
                                 onSubscribe = { purchaseViewModel.startPurchase(plan) }
@@ -145,8 +146,7 @@ fun PlansScreen(
         onConfirmPayment = purchaseViewModel::confirmPayment,
         onPaymentReturn = purchaseViewModel::onPaymentReturn,
         onDismiss = purchaseViewModel::goBack,
-        onGoToOrders = onGoToOrders,
-        onDismissCouponError = purchaseViewModel::dismissCouponError
+        onGoToOrders = onGoToOrders
     )
 }
 
@@ -186,7 +186,7 @@ private fun PlanCard(
                 )
                 if (firstPrice != null) {
                     Text(
-                        text = FormatUtils.currency(firstPrice.price.toLongOrNull()?.toInt() ?: 0),
+                        text = formatCurrency(firstPrice.price.toLongOrNull()?.toInt() ?: 0),
                         fontSize = TextSizes.planName,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary

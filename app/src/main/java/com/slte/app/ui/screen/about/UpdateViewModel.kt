@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slte.app.BuildConfig
 import com.slte.app.R
+import com.slte.app.kernel.KernelProxy
 import com.slte.app.utils.AppLog
 import com.slte.app.utils.sanitizeLog
 import com.slte.app.data.remote.config.RemoteConfig
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -92,16 +94,27 @@ sealed interface UpdateUiState {
 @HiltViewModel
 class UpdateViewModel @Inject constructor(
     private val remoteConfig: RemoteConfig,
+    private val kernelProxy: KernelProxy,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
     val state: StateFlow<UpdateUiState> = _state.asStateFlow()
 
+    private val _kernelVersion = MutableStateFlow<String?>(null)
+    val kernelVersion: StateFlow<String?> = _kernelVersion.asStateFlow()
+
     /** 会话内用户已点过"稍后提醒/关闭"：自动检查不再打扰，下次启动重新提醒 */
     private var dismissedInSession = false
 
     init {
+        viewModelScope.launch {
+            repeat(10) {
+                _kernelVersion.value = kernelProxy.coreVersion()
+                if (_kernelVersion.value != null) return@launch
+                delay(1000)
+            }
+        }
         // 响应式自动检查：启动即用缓存配置检查一次，远程配置拉取/刷新完成后自动复查。
         // 用户点过"稍后提醒/关闭"后会话内不自动弹窗（force 更新除外）。
         viewModelScope.launch {
@@ -113,13 +126,12 @@ class UpdateViewModel @Inject constructor(
 
     /**
      * 检查更新。
-     * @param manual true = 用户主动点击（无新版时提示"已是最新"）；false = 自动检查（静默）。
+     * @param manual true = 用户主动点击（无新版时提示"已是最新"）；false = 自动检查（静默）。手动检测绕过短时间缓存，拉取失败且无缓存时明确提示失败。
      */
     fun checkUpdate(manual: Boolean = false) {
         if (_state.value is UpdateUiState.Checking || _state.value is UpdateUiState.Available) return
         _state.value = UpdateUiState.Checking
         viewModelScope.launch {
-            // 手动检测：真实拉取远程配置（绕过短时间缓存，超时/失败回退缓存）
             if (manual) {
                 withTimeoutOrNull(REFRESH_TIMEOUT_MS) {
                     withContext(Dispatchers.IO) { remoteConfig.refresh(force = true) }
@@ -135,7 +147,6 @@ class UpdateViewModel @Inject constructor(
                 )
             if (!show) {
                 _state.value = when {
-                    // 手动检查且拉取失败、无任何缓存数据：明确提示失败而非误导"已是最新"
                     manual && cfg.updateVersion.isBlank() -> UpdateUiState.Error
                     manual -> UpdateUiState.Latest
                     else -> UpdateUiState.Idle

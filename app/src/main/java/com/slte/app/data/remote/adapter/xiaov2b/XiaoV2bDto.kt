@@ -12,7 +12,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
-// 请求体
 
 @Serializable
 data class XiaoV2bLoginRequest(
@@ -41,7 +40,6 @@ data class XiaoV2bSendCodeRequest(
     val isforget: Int
 )
 
-// 响应体
 
 @Serializable
 data class XiaoV2bResponse<T>(
@@ -126,7 +124,6 @@ data class XiaoV2bSubscribeData(
     )
 }
 
-// 邀请推广 DTO
 
 @Serializable
 data class XiaoV2bInviteCodeData(

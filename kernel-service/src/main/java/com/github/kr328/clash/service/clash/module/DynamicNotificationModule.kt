@@ -10,7 +10,6 @@ import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.compat.getColorCompat
 import com.github.kr328.clash.common.compat.pendingIntentFlags
 import com.github.kr328.clash.common.constants.Components
-import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.util.trafficDownload
@@ -30,16 +29,6 @@ class DynamicNotificationModule(service: Service) : Module<Unit>(service) {
         .setShowWhen(false)
         .setContentTitle(notificationTitle(service))
         .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-        .addAction(
-            android.R.drawable.ic_menu_close_clear_cancel,
-            service.getString(R.string.notification_action_stop),
-            PendingIntent.getBroadcast(
-                service,
-                R.id.nf_clash_status,
-                Intent(Intents.ACTION_CLASH_REQUEST_STOP),
-                pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT)
-            )
-        )
         .setContentIntent(
             PendingIntent.getActivity(
                 service,

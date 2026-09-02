@@ -110,27 +110,24 @@ class AuthRepository @Inject constructor(
     /**
      * 修改密码：服务端会清除全部活跃会话（包括本机），
      * 因此改密成功后立即用新密码静默重新登录换新 token——
-     * 其他设备被挤出，本机保持登录态不退出；同时刷新本地缓存。
+     * 其他设备被挤出，本机保持登录态不退出；同时刷新本地缓存。重登失败时清会话保证状态一致。
      */
     suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit> = runApi {
         authApi.changePassword(oldPassword, newPassword)
         val current = sessionManager.sessionState.value as? SessionState.LoggedIn
         if (current != null) {
-            // 服务端已清所有会话：用新密码重新登录，本机拿到新 token 继续使用
             val email = current.user.email
             val response = try {
                 authApi.login(email.trim(), newPassword)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // 改密已成功但重登失败：本地会话持死 token，清会话保证状态一致
                 sessionManager.clearSession()
                 throw e
             }
             val user = response.toDomainUser(email.trim())
             sessionManager.setLoggedIn(user)
             subscribeRepository.invalidateCache()
-            // 记住密码：更新为新密码；未保存邮箱则无需处理
             if (credentialStore.getSavedEmail() != null) {
                 credentialStore.save(email.trim(), newPassword)
             }
@@ -139,14 +136,13 @@ class AuthRepository @Inject constructor(
 
     /**
      * 退出登录：先尽力吊销服务端会话（显式携带 Authorization 头），再清除本地会话；
-     * 吊销失败不阻塞本地登出，但留痕可观测。
+     * 吊销失败不阻塞本地登出，但留痕可观测。吊销前校验会话未被重登。
      */
     fun logout() {
         val authData = sessionStore.getAuthData()
         if (authData != null) {
             revokeScope.launch {
                 runCatching {
-                    // 吊销前校验会话未被重登；登出后未重登（authData 已清为 null）时仍执行吊销
                     val current = sessionStore.getAuthData()
                     if (current == null || current == authData) {
                         authApi.revokeActiveSessions(authData)

@@ -12,8 +12,6 @@ sealed interface PurchaseStep {
         val couponCode: String = "",
         val couponDiscount: Int = 0,
         val couponVerified: Boolean = false,
-        /** 优惠券错误文案资源 ID（语言切换后弹窗内容随之更新） */
-        val couponErrorRes: Int? = null,
         val isVerifying: Boolean = false,
         val showWarning: Boolean = false
     ) : PurchaseStep {

@@ -148,7 +148,6 @@ class XboardAuthApi(
         val response = executeXboard { userApi.fetchSubscribe() }
         val data = response.data
         if (data == null) {
-            // 无订阅/无套餐属正常业务状态，返回空订阅而非报错
             if (BuildConfig.DEBUG) {
                 AppLog.d("SLTE-Api", "fetchSubscribeInfo: 无订阅，返回空订阅")
             }
@@ -169,7 +168,6 @@ class XboardAuthApi(
         return data.map { it.toDomainOrder() }
     }
 
-    // 套餐购买
 
     override suspend fun fetchPlans(): List<PlanInfoDto> {
         if (BuildConfig.DEBUG) {
@@ -252,7 +250,6 @@ class XboardAuthApi(
         }
     }
 
-    // 邀请推广
 
     override suspend fun fetchInviteInfo(): InviteInfo {
         val response = executeXboard { userApi.fetchInviteInfo() }
@@ -294,7 +291,6 @@ class XboardAuthApi(
         return response.data ?: false
     }
 
-    // 公告通知
 
     override suspend fun fetchNotices(page: Int, pageSize: Int): List<Notice> {
         val response = executeXboard { userApi.fetchNotices(page, pageSize) }
@@ -302,7 +298,6 @@ class XboardAuthApi(
         return data.map { it.toDomain() }
     }
 
-    // 服务器节点
 
     override suspend fun fetchServers(): List<ServerNode> {
         val response = executeXboard { userApi.fetchServers() }

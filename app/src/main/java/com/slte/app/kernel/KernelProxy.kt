@@ -57,6 +57,11 @@ class KernelProxy @Inject constructor(
         default
     }
 
+    /** 内核编译版本号（真实内核，非手动维护），内核不可用时返回 null */
+    suspend fun coreVersion(): String? = safe(null) {
+        manager.clash()?.coreVersion()
+    }
+
     /** 当前内核代理模式（规则/全局/直连/脚本），未连接返回 null */
     suspend fun proxyMode(): String? = safe(null) {
         val clash = manager.clash() ?: return@safe null

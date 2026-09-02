@@ -1,7 +1,7 @@
 package com.github.kr328.clash.service
 
 import android.app.Service
-import com.github.kr328.clash.service.util.cancelAndJoinBlocking
+import com.github.kr328.clash.service.util.cancelAndJoinBlockingAsync
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 
@@ -9,6 +9,6 @@ abstract class BaseService : Service(), CoroutineScope by CoroutineScope(Dispatc
     override fun onDestroy() {
         super.onDestroy()
 
-        cancelAndJoinBlocking()
+        cancelAndJoinBlockingAsync(this)
     }
 }

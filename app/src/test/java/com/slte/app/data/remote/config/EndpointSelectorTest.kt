@@ -55,6 +55,19 @@ class EndpointSelectorTest {
     }
 
     @Test
+    fun `候选入参含主地址时结果不重复且主地址置前`() {
+        // 候选入参可能已含主地址（如远程配置 api_base_urls 数组）：
+        // 排序结果必须去重，同一地址出现两次会导致拦截器对同一地址二次重试
+        val selector = EndpointSelector()
+        val order = selector.candidateOrder(
+            "https://a.example.com",
+            listOf("https://a.example.com", "https://b.example.com")
+        )
+        assertEquals(1, order.count { it == "https://a.example.com" })
+        assertEquals("https://a.example.com", order.first())
+    }
+
+    @Test
     fun `成功记录复位熔断状态`() {
         val selector = EndpointSelector()
         repeat(3) { selector.recordFailure("https://a.example.com") }

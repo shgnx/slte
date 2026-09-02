@@ -54,7 +54,6 @@ private fun spannedToAnnotatedString(
     val spanned = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY)
     val source = spanned.toString()
 
-    // 预计算所有 span 的起止范围和样式
     data class SpanInfo(
         val start: Int,
         val end: Int,

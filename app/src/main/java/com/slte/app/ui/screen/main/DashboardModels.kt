@@ -1,8 +1,6 @@
 package com.slte.app.ui.screen.main
 
 import com.slte.app.utils.Constants
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 
 /** 首页仪表盘数据 */
 data class DashboardData(
@@ -12,7 +10,6 @@ data class DashboardData(
     val hasPlan: Boolean = false,
     val planName: String = "",
     val daysUntilExpired: Int = 0,
-    val daysUntilReset: Int = 0,
     val expiredAt: Long = 0L,
     val serverName: String = Constants.PLACEHOLDER_DASH,
     val serverSelection: String = Constants.SELECTION_AUTO,
@@ -30,14 +27,3 @@ data class DashboardData(
     val isUpdating: Boolean = false,
 )
 
-/** 每月流量重置日剩余天数：resetDay 无配置返回 0；已过今日则算到下月 */
-fun daysUntilReset(resetDay: Int?, today: LocalDate = LocalDate.now()): Int {
-    val day = resetDay ?: return 0
-    if (day <= 0) return 0
-    var nextReset = today.withDayOfMonth(day.coerceAtMost(today.lengthOfMonth()))
-    if (!nextReset.isAfter(today)) {
-        val nextMonth = nextReset.plusMonths(1)
-        nextReset = nextMonth.withDayOfMonth(day.coerceAtMost(nextMonth.lengthOfMonth()))
-    }
-    return ChronoUnit.DAYS.between(today, nextReset).toInt().coerceAtLeast(0)
-}

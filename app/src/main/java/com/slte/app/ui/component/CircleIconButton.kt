@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import com.slte.app.ui.theme.SlteColors
 import com.slte.app.utils.Dimens
 
 /**
@@ -49,7 +50,7 @@ fun CircleIconButton(
                     imageVector = icon,
                     contentDescription = description,
                     modifier = Modifier.size(Dimens.topBarActionIconSize),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = SlteColors.current.iconBlue
                 )
             }
         } else {

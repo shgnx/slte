@@ -52,7 +52,6 @@ interface AuthApi {
 
     suspend fun fetchOrders(): List<OrderInfoDto>
 
-    // 套餐购买
 
     suspend fun fetchPlans(): List<PlanInfoDto>
 
@@ -69,7 +68,6 @@ interface AuthApi {
 
     suspend fun cancelOrder(tradeNo: String)
 
-    // 邀请推广
 
     suspend fun fetchInviteInfo(): InviteInfo
 
@@ -81,7 +79,6 @@ interface AuthApi {
 
     suspend fun withdrawCommission(withdrawMethod: String, withdrawAccount: String): Boolean
 
-    // 公告通知
 
     suspend fun fetchNotices(page: Int = 1, pageSize: Int = 20): List<Notice>
 

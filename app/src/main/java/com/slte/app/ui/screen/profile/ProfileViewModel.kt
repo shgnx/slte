@@ -7,7 +7,6 @@ import com.slte.app.data.repository.SubscribeRepository
 import com.slte.app.domain.model.SessionManager
 import com.slte.app.domain.model.SubscribeInfo
 import com.slte.app.domain.usecase.DaysUntilExpiryUseCase
-import com.slte.app.ui.screen.main.daysUntilReset
 import com.slte.app.utils.ErrorMessages
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
@@ -32,8 +31,6 @@ data class ProfileData(
     val balance: String = "0.00",
     /** 到期剩余天数；null 表示不限时套餐 */
     val daysUntilExpired: Int? = null,
-    /** 每月流量重置剩余天数 */
-    val daysUntilReset: Int = 0,
 )
 
 @HiltViewModel
@@ -67,7 +64,6 @@ class ProfileViewModel @Inject constructor(
                     email = email,
                     balance = cachedUser?.balance ?: "0.00",
                     daysUntilExpired = expiryDays(cachedSubscribe),
-                    daysUntilReset = daysUntilReset(cachedSubscribe?.resetDay),
                     isLoading = false
                 )
             }
@@ -111,7 +107,6 @@ class ProfileViewModel @Inject constructor(
                         it.copy(
                             subscribeInfo = info,
                             daysUntilExpired = expiryDays(info),
-                            daysUntilReset = daysUntilReset(info.resetDay),
                             isLoading = false
                         )
                     }

@@ -3,6 +3,7 @@ package com.github.kr328.clash.service.clash.module
 import android.net.ConnectivityManager
 import android.net.VpnService
 import android.os.Build
+import android.os.ParcelFileDescriptor
 import androidx.core.content.getSystemService
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.util.parseInetSocketAddress
@@ -55,15 +56,20 @@ class TunModule(private val vpn: VpnService) : Module<Unit>(vpn) {
     }
 
     fun attach(device: TunDevice) {
-        Clash.startTun(
-            fd = device.fd,
-            stack = device.stack,
-            gateway = device.gateway,
-            portal = device.portal,
-            dns = device.dns,
-            markSocket = vpn::protect,
-            querySocketUid = this::queryUid
-        )
+        try {
+            Clash.startTun(
+                fd = device.fd,
+                stack = device.stack,
+                gateway = device.gateway,
+                portal = device.portal,
+                dns = device.dns,
+                markSocket = vpn::protect,
+                querySocketUid = this::queryUid
+            )
+        } catch (e: Exception) {
+            runCatching { ParcelFileDescriptor.adoptFd(device.fd).close() }
+            throw e
+        }
     }
 
     suspend fun close() {

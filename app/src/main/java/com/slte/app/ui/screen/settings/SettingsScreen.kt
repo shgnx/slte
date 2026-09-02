@@ -162,7 +162,6 @@ fun SettingsScreen(
         )
     }
 
-    // 修改密码成功提示（与更新订阅同款：LaunchedEffect + 原生 Toast，不登出）
     val context = LocalContext.current
     LaunchedEffect(changePasswordState.success) {
         if (changePasswordState.success) {
@@ -175,7 +174,6 @@ fun SettingsScreen(
         }
     }
 
-    // 修改密码错误提示（弹窗打开时底部 Toast 会被遮挡，居中显示保证可见）
     LaunchedEffect(changePasswordState.errorMessageRes) {
         changePasswordState.errorMessageRes?.let { res ->
             val toast = android.widget.Toast.makeText(
@@ -189,7 +187,6 @@ fun SettingsScreen(
         }
     }
 
-    // TUN 堆栈切换成功提示（LaunchedEffect + 原生 Toast，弹出后消费）
     LaunchedEffect(data.tunStackSwitchCount) {
         if (data.tunStackSwitchCount > 0) {
             android.widget.Toast.makeText(

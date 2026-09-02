@@ -15,6 +15,7 @@ import (
 	"cfa/native/delegate"
 	"cfa/native/tunnel"
 
+	"github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 )
 
@@ -42,6 +43,11 @@ func reset() {
 
 	runtime.GC()
 	debug.FreeOSMemory()
+}
+
+//export queryVersion
+func queryVersion() *C.char {
+	return C.CString(constant.Version)
 }
 
 //export forceGc

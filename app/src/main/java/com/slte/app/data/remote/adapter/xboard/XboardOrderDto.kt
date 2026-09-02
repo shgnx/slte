@@ -10,7 +10,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
-// 套餐购买请求体
 
 @Serializable
 data class XboardCreateOrderRequest(
@@ -41,7 +40,6 @@ data class XboardCancelOrderRequest(
     val tradeNo: String
 )
 
-// 套餐与订单响应体
 
 @Serializable
 data class XboardPlanData(
@@ -69,7 +67,6 @@ data class XboardPlanData(
     @SerialName("device_limit")
     val deviceLimit: Int? = null,
     val content: String? = null,
-    // Xboard 返回布尔开关
     val show: Boolean = true,
     val renew: Boolean = true,
     @SerialName("capacity_limit")

@@ -1,0 +1,54 @@
+# =====================================================================
+# SLTE 完整构建配置模板（本文件入库，仅作模板）
+# 用法：复制本文件为 app/gradle.properties，再填入你的真实值即可编译
+#   cp gradle.properties.example gradle.properties
+# app/gradle.properties 已被 .gitignore 忽略，真实值绝不会进入 git。
+# 所有配置项留空或使用占位值时，构建行为与不配置一致（默认占位符 https://api.example.com），
+# 纯编译与单元测试无需任何真实配置。
+# =====================================================================
+
+# ---------------- 应用信息 ----------------
+# 应用显示名（桌面图标下的名称，覆盖默认 "SLTE"；图标需自行替换 res/mipmap 下的启动图标）
+SLTE_APP_NAME=SLTE
+# 应用包名（applicationId，默认 com.slte.app；修改后应用变为独立安装包，与旧包不冲突）
+SLTE_APPLICATION_ID=com.slte.app
+# 版本号（versionCode 整数 / versionName 显示版本，如 1.0.0）
+SLTE_VERSION_CODE=1
+SLTE_VERSION_NAME=1.0.0
+
+# ---------------- 后端 API ----------------
+# 后端 API 主地址（https，替换为你的真实地址，如 https://api.yourdomain.com）
+SLTE_API_BASE_URL=https://api.example.com
+# 后端类型：xiaov2b（V2Board 系）/ xboard（Xboard）
+SLTE_API_TYPE=xiaov2b
+# 订阅接口路径（与后端契约一致时无需改动）
+SLTE_SUBSCRIBE_PATH=/api/v1/client/subscribe
+
+# ---------------- 远程配置（运行时下发，推荐部署）----------------
+# 远程配置源 URL（逗号分隔多个，https）：多源并发竞速、单源失效自动切换；
+# 内容为 JSON，支持多 API 地址自动优选与 Base64 编码混用（详见 CONFIG.md）
+SLTE_REMOTE_CONFIG_URLS=
+
+# ---------------- 域名白名单 ----------------
+# 追加 API 域名白名单（逗号分隔）：仅追加你自持的域；
+# API 地址与配置源域名会自动并入白名单，此处在有额外自持域时才需要填写
+SLTE_ALLOWED_DOMAINS=
+
+# ---------------- Crisp 客服（可选，推荐由远程配置下发）----------------
+# 编译期默认值；远程配置 JSON 的 crisp_website_id / crisp_enabled 会覆盖此处
+SLTE_CRISP_WEBSITE_ID=
+SLTE_CRISP_ENABLED=false
+
+# ---------------- 通知栏（kernel-service）----------------
+# 通知标题（空 = 跟随应用名；显式设置则覆盖）
+SLTE_NOTIFICATION_TITLE=
+# 通知是否显示实时流量/流速（true / false）
+SLTE_NOTIFICATION_TRAFFIC=true
+
+# ---------------- 发布签名（assembleRelease 必需；只编 debug 可全部留空）----------------
+# keystore 文件路径（绝对路径，或相对项目根目录的路径）
+SLTE_RELEASE_STORE_FILE=
+# store 密码 / 密钥别名 / 密钥密码
+SLTE_RELEASE_STORE_PASSWORD=
+SLTE_RELEASE_KEY_ALIAS=slte
+SLTE_RELEASE_KEY_PASSWORD=

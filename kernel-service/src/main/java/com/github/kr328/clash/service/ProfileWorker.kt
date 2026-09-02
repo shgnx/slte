@@ -24,7 +24,7 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 class ProfileWorker : BaseService() {
-    private val jobs = mutableListOf<Job>()
+    private val jobs = java.util.concurrent.ConcurrentLinkedQueue<Job>()
 
     override fun onCreate() {
         super.onCreate()
@@ -37,7 +37,7 @@ class ProfileWorker : BaseService() {
             delay(TimeUnit.SECONDS.toMillis(10))
 
             while (true) {
-                jobs.removeFirstOrNull()?.join() ?: break
+                jobs.poll()?.join() ?: break
             }
 
             stopSelf()
@@ -60,7 +60,7 @@ class ProfileWorker : BaseService() {
                         run(it)
                     }
 
-                    jobs.add(job)
+                    jobs.offer(job)
                 }
             }
         }

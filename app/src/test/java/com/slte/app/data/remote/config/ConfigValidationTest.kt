@@ -8,23 +8,23 @@ import org.junit.Test
 
 class ConfigValidationTest {
 
-    private val allowed = listOf("slte.me", "example.com")
+    private val allowed = listOf("example.com")
 
     @Test
     fun `API 地址白名单与 https 校验`() {
-        assertTrue(ConfigValidation.isValidApiUrl("https://app.slte.me", allowed))
-        assertTrue(ConfigValidation.isValidApiUrl("https://api.slte.me:8443", allowed))
-        assertFalse(ConfigValidation.isValidApiUrl("http://app.slte.me", allowed))
+        assertTrue(ConfigValidation.isValidApiUrl("https://api.example.com", allowed))
+        assertTrue(ConfigValidation.isValidApiUrl("https://api.example.com:8443", allowed))
+        assertFalse(ConfigValidation.isValidApiUrl("http://api.example.com", allowed))
         assertFalse(ConfigValidation.isValidApiUrl("https://evil.com", allowed))
-        assertFalse(ConfigValidation.isValidApiUrl("https://slte.me.evil.com", allowed))
+        assertFalse(ConfigValidation.isValidApiUrl("https://example.com.evil.com", allowed))
         assertFalse(ConfigValidation.isValidApiUrl("not a url", allowed))
         assertFalse(ConfigValidation.isValidApiUrl("", allowed))
     }
 
     @Test
     fun `直连域名格式与白名单校验`() {
-        assertTrue(ConfigValidation.isValidDomain("slte.me", allowed))
-        assertTrue(ConfigValidation.isValidDomain("api.slte.me", allowed))
+        assertTrue(ConfigValidation.isValidDomain("example.com", allowed))
+        assertTrue(ConfigValidation.isValidDomain("api.example.com", allowed))
         assertFalse(ConfigValidation.isValidDomain("single", allowed))
         assertFalse(ConfigValidation.isValidDomain("evil.com", allowed))
         assertFalse(ConfigValidation.isValidDomain("", allowed))
@@ -67,5 +67,34 @@ class ConfigValidationTest {
         assertTrue(ConfigValidation.isCacheFresh(now - 60_000, now, ttl))
         assertFalse(ConfigValidation.isCacheFresh(now - 6 * 60_000, now, ttl))
         assertFalse(ConfigValidation.isCacheFresh(0L, now, ttl))
+    }
+
+    @Test
+    fun `Base64编码的API地址被解码`() {
+        val encoded = java.util.Base64.getEncoder().encodeToString("https://api.example.com".toByteArray())
+        assertEquals("https://api.example.com", ConfigValidation.decodeApiCandidate(encoded))
+    }
+
+    @Test
+    fun `明文URL原样返回`() {
+        assertEquals("https://api.example.com", ConfigValidation.decodeApiCandidate("https://api.example.com"))
+        assertEquals("", ConfigValidation.decodeApiCandidate(""))
+    }
+
+    @Test
+    fun `非URL的Base64不当地址`() {
+        // "hello" 的 Base64：解码结果不是 URL，保持原文
+        val encoded = java.util.Base64.getEncoder().encodeToString("hello".toByteArray())
+        assertEquals(encoded, ConfigValidation.decodeApiCandidate(encoded))
+    }
+
+    @Test
+    fun `Base64解码后仍须通过白名单与https校验`() {
+        val encoded = java.util.Base64.getEncoder().encodeToString("https://evil.com".toByteArray())
+        val decoded = ConfigValidation.decodeApiCandidate(encoded)
+        assertEquals("https://evil.com", decoded)
+        assertFalse(ConfigValidation.isValidApiUrl(decoded, allowed))
+        val httpEncoded = java.util.Base64.getEncoder().encodeToString("http://api.example.com".toByteArray())
+        assertFalse(ConfigValidation.isValidApiUrl(ConfigValidation.decodeApiCandidate(httpEncoded), allowed))
     }
 }

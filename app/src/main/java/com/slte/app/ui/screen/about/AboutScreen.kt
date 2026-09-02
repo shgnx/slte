@@ -48,6 +48,7 @@ import com.slte.app.ui.theme.SlteShapes
 import com.slte.app.ui.theme.TextSizes
 import com.slte.app.utils.Dimens
 import com.slte.app.utils.AppLog
+import com.slte.app.utils.Constants
 import com.slte.app.utils.Stickers
 
 /**
@@ -62,7 +63,9 @@ fun AboutScreen(
     viewModel: UpdateViewModel = hiltViewModel(key = "update")
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val kernelVersion by viewModel.kernelVersion.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     SlteScaffold(
         title = stringResource(R.string.about_title),
@@ -136,7 +139,7 @@ fun AboutScreen(
                         AboutRowContent(
                             icon = Icons.Outlined.Settings,
                             title = stringResource(R.string.about_kernel_version),
-                            value = stringResource(R.string.about_kernel_version_value)
+                            value = kernelVersion ?: Constants.PLACEHOLDER_DASH
                         )
                         HorizontalDivider(
                             modifier = Modifier.padding(start = Dimens.actionIconSize + Dimens.spacingMd * 2 + Dimens.cardContentPadding),
@@ -147,7 +150,10 @@ fun AboutScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(Dimens.actionRowHeight)
-                                .clickable { viewModel.checkUpdate(manual = true) },
+                                .clickable {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                    viewModel.checkUpdate(manual = true)
+                                },
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
@@ -173,7 +179,6 @@ fun AboutScreen(
                 }
             }
 
-            // 日志导出：生成脱敏 TXT 并弹系统分享面板，方便直接发给客服反馈问题
             item {
                 AboutRowCard(
                     icon = Icons.Outlined.Description,
@@ -202,7 +207,6 @@ fun AboutScreen(
                             val send = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
                                 putExtra(Intent.EXTRA_STREAM, uri)
-                                // Android 12 分享面板预览需要 clipData 携带授权
                                 clipData = ClipData.newRawUri(null, uri)
                                 putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.about_log_export))
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -211,7 +215,6 @@ fun AboutScreen(
                                 Intent.createChooser(send, context.getString(R.string.about_log_export_share))
                             )
                         } catch (e: Exception) {
-                            // 无可用分享目标：文件已导出到 app 目录，保持静默
                         }
                     }
                 )
@@ -219,7 +222,6 @@ fun AboutScreen(
         }
     }
 
-    // 最新版 / 检查失败提示（下载安装失败提示由全局 LoggedInApp 消费）
     LaunchedEffect(state) {
         val res = when (state) {
             is UpdateUiState.Latest -> R.string.about_latest
@@ -242,8 +244,12 @@ private fun AboutRowCard(
     subtitle: String? = null,
     onClick: (() -> Unit)? = null
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Card(
-        onClick = onClick ?: {},
+        onClick = {
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+            onClick?.invoke()
+        },
         modifier = Modifier.fillMaxWidth(),
         shape = SlteShapes.large,
         colors = CardDefaults.cardColors(

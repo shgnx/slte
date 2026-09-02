@@ -8,7 +8,6 @@ import com.slte.app.data.remote.FallbackDns
 import com.slte.app.data.remote.SubscribeSourceImpl
 import com.slte.app.data.remote.XiaoV2b
 import com.slte.app.data.remote.api.AuthApi
-import com.slte.app.data.remote.config.CrispConfig
 import com.slte.app.data.remote.config.RemoteConfig
 import com.slte.app.kernel.AppRemoteConfig
 import com.slte.app.kernel.SpeedResultStore
@@ -53,16 +52,6 @@ object AppModule {
             authInterceptor = authInterceptor,
             dns = fallbackDns,
             remoteConfig = remoteConfig
-        )
-    }
-
-    @Provides
-    @Singleton
-    fun provideCrispConfig(remoteConfig: RemoteConfig): CrispConfig {
-        val cfg = remoteConfig.data
-        return CrispConfig(
-            websiteId = cfg.crispWebsiteId,
-            enabled = cfg.crispEnabled
         )
     }
 }

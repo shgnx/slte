@@ -27,7 +27,6 @@ internal suspend fun <T> executeXboard(block: suspend () -> XboardResponse<T>): 
         }
         response
     } catch (e: CancellationException) {
-        // 协程取消必须重新抛出
         throw e
     } catch (e: ApiException) {
         throw e
@@ -51,7 +50,6 @@ internal suspend fun <T> executeXboard(block: suspend () -> XboardResponse<T>): 
         AppLog.w("SLTE-Api", "execute IOException: ${sanitizeLog(e.message ?: "Unknown")}")
         throw ApiException("请求失败，请检查网络连接", ApiErrors.NETWORK)
     } catch (e: Exception) {
-        // 响应解析等未知异常
         AppLog.w("SLTE-Api", "execute unexpected ${e.javaClass.simpleName}: ${sanitizeLog(e.message ?: "Unknown")}")
         throw ApiException("服务器响应异常", ApiErrors.NETWORK)
     }

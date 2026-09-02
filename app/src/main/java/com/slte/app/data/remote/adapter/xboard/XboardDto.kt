@@ -10,7 +10,6 @@ import com.slte.app.domain.model.InviteStat
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-// 请求体
 
 @Serializable
 data class XboardLoginRequest(
@@ -75,7 +74,6 @@ data class XboardChangePasswordRequest(
     val newPassword: String
 )
 
-// 统一响应包装
 
 @Serializable
 data class XboardResponse<T>(
@@ -83,7 +81,6 @@ data class XboardResponse<T>(
     val message: String? = null
 )
 
-// 响应体与领域转换
 
 @Serializable
 data class XboardLoginData(
@@ -114,7 +111,6 @@ data class XboardUserInfoData(
     val expiredAt: Long = 0L,
     @SerialName("transfer_enable")
     val transferEnable: Long = 0L,
-    // Xboard 返回布尔开关
     @SerialName("remind_expire")
     val remindExpire: Boolean = false,
     @SerialName("remind_traffic")
@@ -157,7 +153,6 @@ fun XboardSubscribeData.toDomainSubscribeInfo() = SubscribeInfoDto(
     resetDay = resetDay
 )
 
-// 邀请推广 DTO
 
 @Serializable
 data class XboardInviteCodeData(

@@ -47,7 +47,6 @@ object AppLog {
             appendLine("SLTE 日志导出")
             appendLine("时间: ${timeFormat.get().format(Date())}")
             appendLine("应用版本: ${com.slte.app.BuildConfig.VERSION_NAME} (${com.slte.app.BuildConfig.VERSION_CODE})")
-            appendLine("内核版本: ${context.getString(R.string.about_kernel_version_value)}")
             appendLine("Android: ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
             appendLine("设备: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
             appendLine("说明: 含应用层 + mihomo 内核日志；已脱敏（token/密码/邮箱等打码），可直接发送给客服")

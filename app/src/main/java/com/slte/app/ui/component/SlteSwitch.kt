@@ -56,7 +56,6 @@ fun SlteSwitch(
             .size(width = Dimens.switchTrackWidth, height = Dimens.switchTrackHeight)
             .clip(RoundedCornerShape(Dimens.switchTrackHeight / 2))
             .background(if (checked) trackOn else trackOff)
-            // 语义：声明开关角色与选中状态，供无障碍朗读
             .semantics {
                 role = Role.Switch
                 stateDescription = stateDesc

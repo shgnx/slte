@@ -44,6 +44,21 @@ internal object ConfigValidation {
     fun isCacheFresh(fetchedAt: Long, now: Long, ttlMs: Long): Boolean =
         fetchedAt > 0 && now - fetchedAt < ttlMs
 
+    /**
+     * API 候选解码：Base64 编码的地址解码后返回；非 Base64 或解码结果不是 URL 时返回原文。
+     * 明文 https URL 含 ':' '/' '.' 等非 Base64 字符，解码必然失败，天然不会被误解码；
+     * 解码结果必须是 http(s) URL 才采用，防止任意 Base64 字符串被当地址。
+     */
+    fun decodeApiCandidate(raw: String): String {
+        val trimmed = raw.trim()
+        val decoded = try {
+            String(java.util.Base64.getDecoder().decode(trimmed), Charsets.UTF_8).trim()
+        } catch (_: Exception) {
+            return trimmed
+        }
+        return if (decoded.startsWith("https://") || decoded.startsWith("http://")) decoded else trimmed
+    }
+
     /** 多源择优：版本最高者胜出；版本相同取延迟最小（最先完成的镜像） */
     fun pickBest(configs: List<FetchedConfig>): FetchedConfig? =
         configs.minWithOrNull { a, b ->

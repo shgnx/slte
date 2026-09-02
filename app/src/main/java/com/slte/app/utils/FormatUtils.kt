@@ -16,12 +16,6 @@ object FormatUtils {
         return "%.2f".format(yuan)
     }
 
-    /** 余额（分）→ 带 ¥ 前缀金额文本，如 1250 → "¥12.50"；负数由调用方自行加 "-" 前缀 */
-    fun currency(balanceCents: Int): String = "¥${balance(balanceCents)}"
-
-    /** 余额（分）→ 带 "-¥" 前缀的金额文本（折扣/扣减显示），如 500 → "-¥5.00" */
-    fun negCurrency(balanceCents: Int): String = "-¥${balance(balanceCents)}"
-
     fun compactIp(ip: String): String {
         if (ip.length <= 20 || !ip.contains(':')) return ip
         return "${ip.take(13)}…${ip.takeLast(6)}"

@@ -27,6 +27,10 @@ class ClashManager(private val context: Context) : IClashManager,
         return Clash.queryTunnelState()
     }
 
+    override fun coreVersion(): String {
+        return Clash.coreVersion()
+    }
+
     override fun queryTrafficTotal(): Long {
         return Clash.queryTrafficTotal()
     }
@@ -91,12 +95,15 @@ class ClashManager(private val context: Context) : IClashManager,
         store.tunStackMode = normalized
         Log.i("Tun stack mode changed: $normalized")
 
-        // 运行中（TunService 已注册监听）会原地重建 TUN；未运行则下次连接生效
         context.sendBroadcastSelf(Intent(Intents.ACTION_TUN_RESTART))
     }
 
     override suspend fun healthCheck(group: String) {
         return Clash.healthCheck(group).await()
+    }
+
+    override fun healthCheckAll() {
+        Clash.healthCheckAll()
     }
 
     override suspend fun updateProvider(type: Provider.Type, name: String) {
@@ -119,7 +126,6 @@ class ClashManager(private val context: Context) : IClashManager,
                                 observer.newItem(c.receive())
                             }
                         } catch (e: CancellationException) {
-                            // intended behavior
                         } catch (e: Exception) {
                             Log.w("UI crashed", e)
                         } finally {

@@ -53,7 +53,7 @@ class FallbackDns @Inject constructor() : Dns {
                     return result
                 }
             } catch (e: Exception) {
-                AppLog.w("SLTE-Dns", "FallbackDns: 备用 DNS $dnsStr 失败: ${e.message}")
+                AppLog.w("SLTE-Dns", "FallbackDns: 备用 DNS $dnsStr 失败")
             }
         }
 

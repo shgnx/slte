@@ -1,9 +1,26 @@
+import java.io.InputStreamReader
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.android.library)
     alias(libs.plugins.ksp)
 }
+
+// 与 app 模块共用 app/gradle.properties 配置源（环境变量优先），此处仅取通知栏两项
+val slteProps = Properties().apply {
+    rootProject.file("app/gradle.properties").takeIf { it.isFile() }?.inputStream()?.use {
+        load(InputStreamReader(it, Charsets.UTF_8))
+    }
+}
+
+fun slteValue(name: String): String? =
+    System.getenv(name)?.takeIf { it.isNotBlank() }
+        ?: slteProps.getProperty(name)?.trim()?.takeIf { it.isNotBlank() }
+
+val slteNotificationTitle = slteValue("SLTE_NOTIFICATION_TITLE") ?: ""
+val slteNotificationTraffic = slteValue("SLTE_NOTIFICATION_TRAFFIC") ?: "true"
 
 android {
     namespace = "com.github.kr328.clash.service"
@@ -13,13 +30,9 @@ android {
         minSdk = 28
         consumerProguardFiles("consumer-rules.pro")
 
-        // 通知栏配置（编译期环境变量注入）：
-        // SLTE_NOTIFICATION_TITLE   通知标题（默认空 = 跟随应用名；显式设置则覆盖）
-        // SLTE_NOTIFICATION_TRAFFIC 是否显示流量/流速（默认 true）
-        val notificationTitle = System.getenv("SLTE_NOTIFICATION_TITLE") ?: ""
-        buildConfigField("String", "NOTIFICATION_TITLE", "\"$notificationTitle\"")
-        val notificationTraffic = System.getenv("SLTE_NOTIFICATION_TRAFFIC") ?: "true"
-        buildConfigField("boolean", "NOTIFICATION_TRAFFIC", notificationTraffic)
+        // 通知栏：标题（空 = 跟随应用名）与流量显示开关
+        buildConfigField("String", "NOTIFICATION_TITLE", "\"$slteNotificationTitle\"")
+        buildConfigField("boolean", "NOTIFICATION_TRAFFIC", slteNotificationTraffic)
     }
 
     buildFeatures {

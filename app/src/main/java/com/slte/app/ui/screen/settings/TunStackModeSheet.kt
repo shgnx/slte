@@ -24,6 +24,7 @@ import com.slte.app.R
 import com.slte.app.ui.component.AppLocaleContent
 import com.slte.app.ui.component.LocalAppLocale
 import com.slte.app.ui.theme.TextSizes
+import com.slte.app.ui.theme.SlteColors
 import com.slte.app.utils.Dimens
 
 /** TUN 堆栈模式选项（顺序：System 默认 / Gvisor / Mixed），value 与内核 TUNStack 小写枚举一致 */
@@ -50,13 +51,13 @@ internal fun TunStackModeSheet(
     onSelect: (TunStackMode) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface
     ) {
-        // 弹窗是独立窗口组合，LocalContext 不随根组件更新，需在此按语言重建
         AppLocaleContent(locale = LocalAppLocale.current) {
             Column(
                 modifier = Modifier
@@ -84,7 +85,10 @@ internal fun TunStackModeSheet(
                             .fillMaxWidth()
                             .selectable(
                                 selected = selected,
-                                onClick = { onSelect(mode) }
+                                onClick = {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                    onSelect(mode)
+                                }
                             )
                             .padding(vertical = Dimens.spacingSm),
                         verticalAlignment = Alignment.CenterVertically
@@ -93,7 +97,7 @@ internal fun TunStackModeSheet(
                             selected = selected,
                             onClick = null,
                             colors = RadioButtonDefaults.colors(
-                                selectedColor = MaterialTheme.colorScheme.primary
+                                selectedColor = SlteColors.current.iconBlue
                             )
                         )
                         Column(

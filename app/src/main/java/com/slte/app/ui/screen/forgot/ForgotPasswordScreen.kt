@@ -199,7 +199,6 @@ fun ForgotPasswordScreen(
                         containerColor = MaterialTheme.colorScheme.surface,
                         contentColor = MaterialTheme.colorScheme.primary
                     ),
-                    // 加载中保持蓝色（VM 内防重入）；倒计时才置灰
                     enabled = !isCountingDown
                 ) {
                     if (isLoading) {
@@ -284,7 +283,10 @@ fun ForgotPasswordScreen(
 
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
-            TextButton(onClick = onBackToLogin) {
+            TextButton(onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onBackToLogin()
+            }) {
                 Text(stringResource(R.string.register_back_to_login))
             }
         }

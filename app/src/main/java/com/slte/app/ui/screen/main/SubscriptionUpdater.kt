@@ -157,24 +157,21 @@ class SubscriptionUpdater @Inject constructor(
     }
 
     /** 支付/续费成功后的全屏刷新：订阅信息、用户信息、内核订阅、首页信息；
-     * 完成后由调用方调用 [finishPurchaseRefresh] 关闭 Loading（配合服务器节点刷新）。
+     * 完成后由调用方调用 [finishPurchaseRefresh] 关闭 Loading（配合服务器节点刷新）。已有更新先等待其结束；以订单开通（status=1/3）为准轮询；超时未开通明确提示；测速与内核热身后台执行。
      */
     fun refreshAfterPurchase(
         data: MutableStateFlow<DashboardData>,
         tradeNo: String? = null,
         scope: CoroutineScope,
     ): Job = scope.launch {
-        // 已有更新在进行中：等待其结束再开始
         if (data.value.isUpdating) {
             withTimeoutOrNull(PURCHASE_REFRESH_TIMEOUT_MS) { data.first { !it.isUpdating } }
         }
         data.update { it.copy(isUpdating = true) }
-        // 轮询直到订单已开通（status=1/3）或套餐已生效
         val deadline = System.currentTimeMillis() + PURCHASE_REFRESH_TIMEOUT_MS
         var info = subscribeRepository.fetchSubscribeInfo(force = true).getOrNull()
         var activated = true
         if (tradeNo != null) {
-            // 以订单开通（status=1/3）为准轮询
             activated = false
             while (System.currentTimeMillis() < deadline && !activated) {
                 activated = orderRepository.getOrderDetail(tradeNo).getOrNull()?.status in ACTIVATED_ORDER_STATUSES
@@ -190,11 +187,9 @@ class SubscriptionUpdater @Inject constructor(
             }
         }
         subscribeRepository.fetchUserInfo()
-        // 拉取订阅 YAML 并热重载内核：新套餐的节点立即可用（无需重启）
         val hasPlan = info?.hasPlan == true
         val kernelOk = if (hasPlan) kernelConfig.updateProfile() else false
         serverRepository.invalidateCache()
-        // 首页节点行：拉取；为空时补拉一次
         var servers = serverRepository.fetchServers(force = true).getOrNull().orEmpty()
         if (servers.isEmpty() && hasPlan) {
             delay(3000)
@@ -213,14 +208,12 @@ class SubscriptionUpdater @Inject constructor(
         applySubscribeInfo(
             data,
             info ?: subscribeRepository.getCachedSubscribeInfo(),
-            // 超时仍未确认开通：明确提示
             errorMessageRes = if (!activated && tradeNo != null) {
                 R.string.purchase_activation_timeout
             } else {
                 null
             }
         )
-        // 测速后台执行，不阻塞购买刷新完成
         if (kernelOk) scope.launch { autoSpeedTestAfterUpdate() }
     }
 
@@ -270,7 +263,6 @@ class SubscriptionUpdater @Inject constructor(
                 kernelManager.profileLoaded.first { it > before }
             }
         }
-        // 内核热身：等待真实延迟出现（最多约 30 秒）
         kernelProxy.speedTestUntilReady()
     }
 
@@ -288,7 +280,6 @@ class SubscriptionUpdater @Inject constructor(
                 hasPlan = info?.hasPlan == true,
                 planName = info?.planName ?: "",
                 daysUntilExpired = daysUntilExpiryUseCase(expAt),
-                daysUntilReset = daysUntilReset(info?.resetDay),
                 expiredAt = expAt,
                 isRefreshing = false,
                 isUpdating = false,

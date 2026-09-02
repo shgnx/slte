@@ -42,6 +42,10 @@ object Clash {
         return Json.decodeFromString(TunnelState.serializer(), json)
     }
 
+    fun coreVersion(): String {
+        return Bridge.nativeCoreVersion()
+    }
+
     fun queryTrafficNow(): Traffic {
         return Bridge.nativeQueryTrafficNow()
     }

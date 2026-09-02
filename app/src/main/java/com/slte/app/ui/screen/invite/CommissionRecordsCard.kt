@@ -88,7 +88,7 @@ private fun CommissionRecordItem(record: CommissionRecord) {
             text = stringResource(R.string.invite_record_amount, FormatUtils.balance(record.getAmount)),
             fontWeight = FontWeight.SemiBold,
             fontSize = TextSizes.inviteRecordAmount,
-            color = MaterialTheme.colorScheme.primary
+            color = SlteColors.current.iconBlue
         )
     }
 }

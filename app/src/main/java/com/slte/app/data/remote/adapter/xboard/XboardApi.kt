@@ -47,7 +47,6 @@ interface XboardUserRetrofit {
     @GET("user/order/fetch")
     suspend fun fetchOrders(): XboardResponse<List<XboardOrderData>>
 
-    // 套餐购买
 
     @POST("user/order/save")
     suspend fun createOrder(
@@ -77,7 +76,6 @@ interface XboardUserRetrofit {
         @Body request: XboardCancelOrderRequest
     ): XboardResponse<Boolean>
 
-    // 邀请推广
 
     @GET("user/invite/fetch")
     suspend fun fetchInviteInfo(): XboardResponse<XboardInviteData>
@@ -102,7 +100,6 @@ interface XboardUserRetrofit {
         @Body request: XboardWithdrawRequest
     ): XboardResponse<Boolean>
 
-    // 公告通知
 
     @GET("user/notice/fetch")
     suspend fun fetchNotices(
