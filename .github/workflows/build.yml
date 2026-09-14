@@ -176,7 +176,7 @@ jobs:
       - name: 配置 Gradle 缓存
         # 复用 ~/.gradle 依赖与配置缓存及 gradle wrapper 分发包，避免每次全量下载（编译提速）
         # gradle-home-cache-includes 排除构建产物（out/build 目录），只缓存可复用依赖
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           # 本 workflow 仅 workflow_dispatch 触发，无 push 事件，恒为 false
           cache-read-only: false
