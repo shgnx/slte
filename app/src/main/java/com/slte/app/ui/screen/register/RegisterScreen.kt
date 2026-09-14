@@ -13,21 +13,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Sms
-import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,24 +25,24 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slte.app.R
 import com.slte.app.ui.component.AnimatedSticker
-import com.slte.app.ui.component.LottieLoadingIcon
 import com.slte.app.ui.component.LoadingOverlay
+import com.slte.app.ui.component.SlteButton
+import com.slte.app.ui.component.SlteButtonStyle
+import com.slte.app.ui.component.SlteInput
 import com.slte.app.ui.component.ToastTip
-import com.slte.app.ui.component.InputFieldColors
-import com.slte.app.ui.theme.SlteColors
-import com.slte.app.ui.theme.SlteShapes
+import com.slte.app.ui.theme.SlteIcons
+import com.slte.app.ui.theme.SlteType
 import com.slte.app.utils.Dimens
 import com.slte.app.utils.Stickers
 
@@ -67,7 +57,7 @@ fun RegisterScreen(
     emailVerifyEnabled: Boolean,
     inviteForceEnabled: Boolean,
     onBackToLogin: () -> Unit,
-    viewModel: RegisterViewModel = hiltViewModel()
+    viewModel: RegisterViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(emailVerifyEnabled, inviteForceEnabled) {
         viewModel.initConfig(emailVerifyEnabled, inviteForceEnabled)
@@ -76,14 +66,15 @@ fun RegisterScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val haptic = LocalHapticFeedback.current
 
-    val form = when (val s = state) {
-        is RegisterUiState.Form -> s
-        is RegisterUiState.SendingCode -> s.form
-        is RegisterUiState.Countdown -> s.form
-        is RegisterUiState.Registering -> s.form
-        is RegisterUiState.RegisterSuccess -> s.form
-        is RegisterUiState.Error -> s.form
-    }
+    val form =
+        when (val s = state) {
+            is RegisterUiState.Form -> s
+            is RegisterUiState.SendingCode -> s.form
+            is RegisterUiState.Countdown -> s.form
+            is RegisterUiState.Registering -> s.form
+            is RegisterUiState.RegisterSuccess -> s.form
+            is RegisterUiState.Error -> s.form
+        }
 
     val isSendingCode = state is RegisterUiState.SendingCode
     val isRegistering = state is RegisterUiState.Registering
@@ -93,230 +84,147 @@ fun RegisterScreen(
     val isLoading = isSendingCode
 
     Box(
-        modifier = Modifier
+        modifier =
+        Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(
-                horizontal = Dimens.spacingXxl,
-                vertical = Dimens.spacingXxl
+                horizontal = Dimens.gap.xxl,
+                vertical = Dimens.gap.xxl,
             ),
-        contentAlignment = Alignment.TopCenter
+        contentAlignment = Alignment.TopCenter,
     ) {
         Column(
             modifier = Modifier.widthIn(max = Dimens.maxContentWidth),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(modifier = Modifier.height(Dimens.spacingXxl))
+            Spacer(modifier = Modifier.height(Dimens.gap.xxl))
 
             AnimatedSticker(
                 assetPath = Stickers.REGISTER,
-                modifier = Modifier.size(Dimens.logoSize)
+                modifier = Modifier.size(Dimens.logoSize),
             )
 
-            Spacer(modifier = Modifier.height(Dimens.spacingXl))
+            Spacer(modifier = Modifier.height(Dimens.gap.xl))
 
             Text(
                 text = stringResource(R.string.register_title),
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.SemiBold
-                ),
-                color = MaterialTheme.colorScheme.onBackground
+                style = SlteType.pageTitle,
+                color = MaterialTheme.colorScheme.onBackground,
             )
 
-            Spacer(modifier = Modifier.height(Dimens.spacingXxl))
+            Spacer(modifier = Modifier.height(Dimens.gap.xxl))
 
-            OutlinedTextField(
+            SlteInput(
                 value = form.email,
                 onValueChange = viewModel::onEmailChange,
+                placeholder = stringResource(R.string.error_email_required),
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = {
-                    Text(
-                        text = stringResource(R.string.error_email_required),
-                        color = SlteColors.current.inputFieldPlaceholder
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Email,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                singleLine = true,
-                shape = SlteShapes.medium,
-                colors = InputFieldColors(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next
-                ),
-                enabled = !isRegistering
+                icon = SlteIcons.Account,
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next,
+                enabled = !isRegistering,
+                bordered = false,
             )
 
-            Spacer(modifier = Modifier.height(Dimens.spacingMd))
+            Spacer(modifier = Modifier.height(Dimens.gap.md))
 
             if (emailVerifyEnabled) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.gap.md),
                 ) {
-                    OutlinedTextField(
+                    SlteInput(
                         value = form.verificationCode,
                         onValueChange = viewModel::onCodeChange,
+                        placeholder = stringResource(R.string.error_code_required),
                         modifier = Modifier.weight(1f),
-                        placeholder = {
-                            Text(
-                                text = stringResource(R.string.error_code_required),
-                                color = SlteColors.current.inputFieldPlaceholder
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.Sms,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        singleLine = true,
-                        shape = SlteShapes.medium,
-                        colors = InputFieldColors(),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Next
-                        ),
-                        enabled = !isRegistering
+                        icon = SlteIcons.VerificationCode,
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next,
+                        enabled = !isRegistering,
+                        bordered = false,
                     )
-
-                    FilledTonalButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.sendVerificationCode()
-                        },
-                        modifier = Modifier
-                            .width(Dimens.sendCodeButtonWidth)
-                            .height(Dimens.fieldHeight),
-                        shape = SlteShapes.medium,
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.primary
-                        ),
-                        enabled = !isCountingDown
-                    ) {
-                        if (isLoading) {
-                            LottieLoadingIcon(modifier = Modifier.size(Dimens.loadingIndicatorSize))
-                        } else if (isCountingDown) {
-                            Text(
-                                text = stringResource(R.string.format_countdown_s, countdownSeconds),
-                                style = MaterialTheme.typography.labelLarge
-                            )
+                    SlteButton(
+                        text =
+                        if (isCountingDown) {
+                            stringResource(R.string.format_countdown_s, countdownSeconds)
                         } else {
-                            Text(stringResource(R.string.register_send_code))
-                        }
-                    }
+                            stringResource(R.string.register_send_code)
+                        },
+                        onClick = viewModel::sendVerificationCode,
+                        modifier = Modifier.width(Dimens.sendCodeButtonWidth),
+                        style = SlteButtonStyle.Tonal,
+                        enabled = !isCountingDown,
+                        loading = isLoading,
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(Dimens.spacingMd))
+                Spacer(modifier = Modifier.height(Dimens.gap.md))
             }
 
-            OutlinedTextField(
+            SlteInput(
                 value = form.password,
                 onValueChange = viewModel::onPasswordChange,
+                placeholder = stringResource(R.string.error_password_required),
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = {
-                    Text(
-                        text = stringResource(R.string.error_password_required),
-                        color = SlteColors.current.inputFieldPlaceholder
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Lock,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                trailingIcon = {
-                    IconButton(onClick = viewModel::togglePasswordVisible) {
-                        Icon(
-                            imageVector = if (form.passwordVisible) {
-                                Icons.Outlined.VisibilityOff
-                            } else {
-                                Icons.Outlined.Visibility
-                            },
-                            contentDescription = stringResource(R.string.login_toggle_password),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                visualTransformation = if (form.passwordVisible) {
+                icon = SlteIcons.Password,
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done,
+                enabled = !isRegistering,
+                visualTransformation =
+                if (form.passwordVisible) {
                     VisualTransformation.None
                 } else {
                     PasswordVisualTransformation()
                 },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                singleLine = true,
-                shape = SlteShapes.medium,
-                colors = InputFieldColors(),
-                enabled = !isRegistering
+                trailing = {
+                    IconButton(onClick = viewModel::togglePasswordVisible) {
+                        Icon(
+                            imageVector =
+                            if (form.passwordVisible) {
+                                SlteIcons.VisibilityOff
+                            } else {
+                                SlteIcons.VisibilityOn
+                            },
+                            contentDescription = stringResource(R.string.login_toggle_password),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+                bordered = false,
             )
 
-            Spacer(modifier = Modifier.height(Dimens.spacingMd))
+            Spacer(modifier = Modifier.height(Dimens.gap.md))
 
-            OutlinedTextField(
+            SlteInput(
                 value = form.inviteCode,
                 onValueChange = viewModel::onInviteCodeChange,
+                placeholder =
+                if (inviteForceEnabled) {
+                    stringResource(R.string.register_invite_hint)
+                } else {
+                    stringResource(R.string.register_invite_optional)
+                },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = {
-                    Text(
-                        text = if (inviteForceEnabled) {
-                            stringResource(R.string.register_invite_hint)
-                        } else {
-                            stringResource(R.string.register_invite_optional)
-                        },
-                        color = SlteColors.current.inputFieldPlaceholder
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Outlined.CardGiftcard,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                singleLine = true,
-                shape = SlteShapes.medium,
-                colors = InputFieldColors(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Done
-                ),
-                enabled = !isRegistering
+                icon = SlteIcons.InviteCode,
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Done,
+                enabled = !isRegistering,
+                bordered = false,
             )
 
-            Spacer(modifier = Modifier.height(Dimens.spacingLg))
+            Spacer(modifier = Modifier.height(Dimens.gap.lg))
+            SlteButton(
+                text = stringResource(R.string.register_button),
+                onClick = viewModel::register,
+                modifier = Modifier.fillMaxWidth(),
+                style = SlteButtonStyle.Primary,
+                loading = isRegistering,
+            )
 
-            Button(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    viewModel.register()
-                },
-                enabled = !isRegistering,
-                colors = ButtonDefaults.buttonColors(
-                    disabledContainerColor = MaterialTheme.colorScheme.primary,
-                    disabledContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(Dimens.buttonHeight),
-                shape = SlteShapes.medium,
-            ) {
-                Text(stringResource(R.string.register_button))
-            }
-
-            Spacer(modifier = Modifier.height(Dimens.spacingMd))
+            Spacer(modifier = Modifier.height(Dimens.gap.md))
 
             TextButton(onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -331,6 +239,6 @@ fun RegisterScreen(
 
     ToastTip(
         message = errorMessageRes?.let { stringResource(it) },
-        onDismiss = viewModel::dismissError
+        onDismiss = viewModel::dismissError,
     )
 }

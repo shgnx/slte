@@ -1,6 +1,6 @@
 package com.slte.app.data.remote
 
-import okhttp3.Dns
+import com.slte.app.utils.AppLog
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -9,21 +9,23 @@ import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.slte.app.utils.AppLog
+import okhttp3.Dns
 
 /** 系统 DNS 失败时轮询备用 DNS 的兜底解析器 */
 @Singleton
-class FallbackDns @Inject constructor() : Dns {
-
+class FallbackDns
+@Inject
+constructor() : Dns {
     /** 解析缓存（域名 → IP 列表 + 写入时间），TTL 过期后重新解析 */
     private val cache = ConcurrentHashMap<String, CachedEntry>()
 
-    private val fallbackServers = listOf(
-        "114.114.114.114",   // 中国电信公共 DNS
-        "223.5.5.5",         // 阿里 DNS
-        "8.8.8.8",           // Google DNS
-        "1.1.1.1",           // Cloudflare DNS
-    )
+    private val fallbackServers =
+        listOf(
+            "114.114.114.114", // 中国电信公共 DNS
+            "223.5.5.5", // 阿里 DNS
+            "8.8.8.8", // Google DNS
+            "1.1.1.1", // Cloudflare DNS
+        )
 
     override fun lookup(hostname: String): List<InetAddress> {
         val now = System.currentTimeMillis()
@@ -69,24 +71,31 @@ class FallbackDns @Inject constructor() : Dns {
         cache.clear()
     }
 
-    private data class CachedEntry(val ips: List<InetAddress>, val timestamp: Long)
+    private data class CachedEntry(
+        val ips: List<InetAddress>,
+        val timestamp: Long,
+    )
 
     private companion object {
-            const val CACHE_TTL_MS = 5 * 60_000L
+        const val CACHE_TTL_MS = 5 * 60_000L
 
-            const val FALLBACK_TIMEOUT_MS = 8_000L
+        const val FALLBACK_TIMEOUT_MS = 8_000L
 
-            const val QUERY_TIMEOUT_MS = 5_000L
+        const val QUERY_TIMEOUT_MS = 5_000L
 
-            /** DNS 名称指针压缩最大跳转次数（防环） */
-            const val MAX_POINTER_JUMPS = 16
+        /** DNS 名称指针压缩最大跳转次数（防环） */
+        const val MAX_POINTER_JUMPS = 16
 
-            /** DNS 名称最大长度（RFC 1035 上限） */
-            const val MAX_NAME_LENGTH = 253
+        /** DNS 名称最大长度（RFC 1035 上限） */
+        const val MAX_NAME_LENGTH = 253
     }
 
     /** UDP 查询 A 记录；remainingMs 为整体超时的剩余时间，socket 超时取单次上限与剩余时间的较小值 */
-    private fun queryDns(hostname: String, dnsServer: InetAddress, remainingMs: Long): List<InetAddress> {
+    private fun queryDns(
+        hostname: String,
+        dnsServer: InetAddress,
+        remainingMs: Long,
+    ): List<InetAddress> {
         val socket = DatagramSocket()
         socket.soTimeout = minOf(QUERY_TIMEOUT_MS, remainingMs.coerceAtLeast(1)).toInt()
 
@@ -109,42 +118,48 @@ class FallbackDns @Inject constructor() : Dns {
         }
     }
 
-    private fun buildQueryPacket(id: Short, hostname: String): ByteArray {
+    private fun buildQueryPacket(
+        id: Short,
+        hostname: String,
+    ): ByteArray {
         val buf = ByteArray(512)
         var pos = 0
 
-        // Header (12 字节)
+        // DNS 报文头（12 字节）
         buf[pos++] = (id.toInt() shr 8).toByte()
         buf[pos++] = id.toByte()
-        buf[pos++] = 1   // flags: recursion desired
+        buf[pos++] = 1 // 标志位：请求递归解析 (RD)
         buf[pos++] = 0
-        buf[pos++] = 0   // QDCOUNT = 1
+        buf[pos++] = 0 // QDCOUNT 高位，计数 = 1
         buf[pos++] = 1
-        buf[pos++] = 0   // ANCOUNT = 0
+        buf[pos++] = 0 // ANCOUNT 高位，计数 = 0
         buf[pos++] = 0
-        buf[pos++] = 0   // NSCOUNT = 0
+        buf[pos++] = 0 // NSCOUNT 高位，计数 = 0
         buf[pos++] = 0
-        buf[pos++] = 0   // ARCOUNT = 0
+        buf[pos++] = 0 // ARCOUNT 高位，计数 = 0
         buf[pos++] = 0
 
-        // Question: 域名编码为长度前缀标签
+        // 问题区：域名按「长度前缀标签」编码
         for (label in hostname.split(".")) {
             buf[pos++] = label.length.toByte()
             for (c in label.encodeToByteArray()) {
                 buf[pos++] = c
             }
         }
-        buf[pos++] = 0    // 标签结束
-        buf[pos++] = 0    // QTYPE: A (1)
+        buf[pos++] = 0 // 标签结束
+        buf[pos++] = 0 // QTYPE 高位：A 记录 (1)
         buf[pos++] = 1
-        buf[pos++] = 0    // QCLASS: IN (1)
+        buf[pos++] = 0 // QCLASS 高位：IN (1)
         buf[pos++] = 1
 
         return buf.copyOf(pos)
     }
 
     private fun parseResponse(
-        resp: ByteArray, len: Int, expectedId: Short, hostname: String
+        resp: ByteArray,
+        len: Int,
+        expectedId: Short,
+        hostname: String,
     ): List<InetAddress> {
         val data = resp.copyOfRange(0, len)
         val respId = ((resp[0].toInt() and 0xFF) shl 8) or (resp[1].toInt() and 0xFF)
@@ -168,7 +183,7 @@ class FallbackDns @Inject constructor() : Dns {
         if (qdcount > 0) {
             val (qname, qend) = decodeName(data, pos)
             pos = qend
-            pos += 4  // QTYPE + QCLASS
+            pos += 4 // QTYPE + QCLASS
             // 问题区必须与查询域名一致：防止无关响应被接受
             if (!qname.equals(hostname, ignoreCase = true)) {
                 throw UnknownHostException("DNS question mismatch")
@@ -185,7 +200,7 @@ class FallbackDns @Inject constructor() : Dns {
             pos += 2
             if (pos + rdlength > data.size) throw UnknownHostException("DNS answer truncated")
 
-            if (type == 1 && rdlength == 4) {  // A 记录
+            if (type == 1 && rdlength == 4) { // A 记录
                 val addr = data.copyOfRange(pos, pos + 4)
                 result.add(InetAddress.getByAddress(hostname, addr))
             }
@@ -199,7 +214,10 @@ class FallbackDns @Inject constructor() : Dns {
     }
 
     /** 解码 DNS 名称（支持指针压缩），返回 (名称, 名称字段结束位置) */
-    private fun decodeName(buf: ByteArray, start: Int): Pair<String, Int> {
+    private fun decodeName(
+        buf: ByteArray,
+        start: Int,
+    ): Pair<String, Int> {
         var pos = start
         var jumped = false
         var end = start
@@ -232,7 +250,10 @@ class FallbackDns @Inject constructor() : Dns {
         return labels.joinToString(".") to end
     }
 
-    private fun skipName(buf: ByteArray, start: Int): Int {
+    private fun skipName(
+        buf: ByteArray,
+        start: Int,
+    ): Int {
         var pos = start
         while (pos < buf.size) {
             val len = buf[pos].toInt() and 0xFF
@@ -242,5 +263,4 @@ class FallbackDns @Inject constructor() : Dns {
         }
         return pos
     }
-
 }

@@ -12,7 +12,9 @@ import javax.inject.Singleton
  * 鉴权由 OkHttp 拦截器统一注入。
  */
 @Singleton
-class InviteRepository @Inject constructor(
+class InviteRepository
+@Inject
+constructor(
     private val authApi: AuthApi,
 ) {
     /** 获取邀请信息（邀请码列表 + 统计数据） */
@@ -25,7 +27,10 @@ class InviteRepository @Inject constructor(
     }
 
     /** 获取佣金明细记录（分页） */
-    suspend fun fetchCommissionRecords(page: Int = 1, pageSize: Int = 10): Result<List<CommissionRecord>> = runApi {
+    suspend fun fetchCommissionRecords(
+        page: Int = 1,
+        pageSize: Int = 10,
+    ): Result<List<CommissionRecord>> = runApi {
         authApi.fetchCommissionRecords(page, pageSize)
     }
 
@@ -34,7 +39,14 @@ class InviteRepository @Inject constructor(
         authApi.transferCommission(transferAmountCents)
     }
 
-    suspend fun withdrawCommission(method: String, account: String): Result<Boolean> = runApi {
+    suspend fun withdrawCommission(
+        method: String,
+        account: String,
+    ): Result<Boolean> = runApi {
         authApi.withdrawCommission(method, account)
+    }
+
+    suspend fun fetchWithdrawMethods(): Result<List<String>> = runApi {
+        authApi.fetchWithdrawMethods()
     }
 }

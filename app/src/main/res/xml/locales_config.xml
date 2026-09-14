@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 13+ 系统级「应用语言」设置入口（android:localeConfig）。
+  与应用内设置页的语言切换（LocaleStore）保持同一套语言集合：
+  values/ = 简体中文（默认回退）、values-en/ = 英文、values-b+zh+Hant/ = 繁体中文。
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="zh-Hans" />
+    <locale android:name="zh-Hant" />
+</locale-config>

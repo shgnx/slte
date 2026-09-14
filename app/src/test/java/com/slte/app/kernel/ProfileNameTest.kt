@@ -5,8 +5,10 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/**
+ * 邮箱 → 配置文件名标记的派生规则测试：稳定、可区分、无邮箱回退与固定长度。
+ */
 class ProfileNameTest {
-
     @Test
     fun `同一邮箱标记稳定`() {
         assertEquals(profileNameFor("user@example.com"), profileNameFor("user@example.com"))

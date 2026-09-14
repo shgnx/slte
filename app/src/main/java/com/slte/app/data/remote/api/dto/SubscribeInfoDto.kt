@@ -9,7 +9,6 @@ package com.slte.app.data.remote.api.dto
  * @param transferEnable 总可用流量（字节）
  * @param upload 已上传流量（字节）
  * @param download 已下载流量（字节）
- * @param resetDay 每月流量重置日
  */
 data class SubscribeInfoDto(
     val planId: Int = 0,
@@ -18,5 +17,5 @@ data class SubscribeInfoDto(
     val transferEnable: Long = 0L,
     val upload: Long = 0L,
     val download: Long = 0L,
-    val resetDay: Int? = null,
+    val subscribeUrl: String? = null,
 )

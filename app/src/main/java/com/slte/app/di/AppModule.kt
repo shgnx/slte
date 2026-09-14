@@ -4,9 +4,9 @@ import com.slte.app.BuildConfig
 import com.slte.app.data.local.SessionStore
 import com.slte.app.data.remote.ApiBackend
 import com.slte.app.data.remote.AuthInterceptor
+import com.slte.app.data.remote.BackendAdapterFactory
 import com.slte.app.data.remote.FallbackDns
 import com.slte.app.data.remote.SubscribeSourceImpl
-import com.slte.app.data.remote.XiaoV2b
 import com.slte.app.data.remote.api.AuthApi
 import com.slte.app.data.remote.config.RemoteConfig
 import com.slte.app.kernel.AppRemoteConfig
@@ -21,7 +21,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
-
     @Provides
     @Singleton
     fun provideAppRemoteConfig(remoteConfig: RemoteConfig): AppRemoteConfig = remoteConfig
@@ -39,19 +38,20 @@ object AppModule {
     fun provideAuthApi(
         authInterceptor: AuthInterceptor,
         fallbackDns: FallbackDns,
-        remoteConfig: RemoteConfig
+        remoteConfig: RemoteConfig,
     ): AuthApi {
         val cfg = remoteConfig.data
-        val backend = ApiBackend(
-            type = cfg.apiType,
-            baseUrl = cfg.apiBaseUrl
-        )
-        return XiaoV2b.createAuthApi(
+        val backend =
+            ApiBackend(
+                type = cfg.apiType,
+                baseUrl = cfg.apiBaseUrl,
+            )
+        return BackendAdapterFactory.createAuthApi(
             backend,
             isDebug = BuildConfig.DEBUG,
             authInterceptor = authInterceptor,
             dns = fallbackDns,
-            remoteConfig = remoteConfig
+            remoteConfig = remoteConfig,
         )
     }
 }

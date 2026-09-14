@@ -3,18 +3,17 @@ package com.slte.app.ui.screen.forgot
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slte.app.R
-import com.slte.app.data.remote.ApiException
-import com.slte.app.domain.model.EmailCodePurpose
 import com.slte.app.data.repository.AuthRepository
+import com.slte.app.domain.model.EmailCodePurpose
 import com.slte.app.domain.usecase.CountdownUseCase
 import com.slte.app.utils.ErrorMessages
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 sealed interface ForgotPasswordUiState {
     data class Form(
@@ -24,19 +23,36 @@ sealed interface ForgotPasswordUiState {
         val passwordVisible: Boolean = false,
     ) : ForgotPasswordUiState
 
-    data class SendingCode(val form: Form) : ForgotPasswordUiState
-    data class Countdown(val form: Form, val seconds: Int) : ForgotPasswordUiState
-    data class Resetting(val form: Form) : ForgotPasswordUiState
-    data class ResetSuccess(val form: Form) : ForgotPasswordUiState
-    data class Error(val form: Form, val messageRes: Int) : ForgotPasswordUiState
+    data class SendingCode(
+        val form: Form,
+    ) : ForgotPasswordUiState
+
+    data class Countdown(
+        val form: Form,
+        val seconds: Int,
+    ) : ForgotPasswordUiState
+
+    data class Resetting(
+        val form: Form,
+    ) : ForgotPasswordUiState
+
+    data class ResetSuccess(
+        val form: Form,
+    ) : ForgotPasswordUiState
+
+    data class Error(
+        val form: Form,
+        val messageRes: Int,
+    ) : ForgotPasswordUiState
 }
 
 @HiltViewModel
-class ForgotPasswordViewModel @Inject constructor(
+class ForgotPasswordViewModel
+@Inject
+constructor(
     private val authRepository: AuthRepository,
     private val countdownUseCase: CountdownUseCase,
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow<ForgotPasswordUiState>(ForgotPasswordUiState.Form())
     val uiState: StateFlow<ForgotPasswordUiState> = _uiState.asStateFlow()
 
@@ -53,8 +69,9 @@ class ForgotPasswordViewModel @Inject constructor(
     }
 
     private val isLoadingOrResetting: Boolean
-        get() = _uiState.value is ForgotPasswordUiState.SendingCode
-                || _uiState.value is ForgotPasswordUiState.Resetting
+        get() =
+            _uiState.value is ForgotPasswordUiState.SendingCode ||
+                _uiState.value is ForgotPasswordUiState.Resetting
 
     private val isCountingDown: Boolean
         get() = _uiState.value is ForgotPasswordUiState.Countdown
@@ -81,12 +98,13 @@ class ForgotPasswordViewModel @Inject constructor(
 
     fun dismissError() {
         val f = currentForm()
-        _uiState.value = ForgotPasswordUiState.Form(
-            email = f.email,
-            verificationCode = f.verificationCode,
-            newPassword = f.newPassword,
-            passwordVisible = f.passwordVisible,
-        )
+        _uiState.value =
+            ForgotPasswordUiState.Form(
+                email = f.email,
+                verificationCode = f.verificationCode,
+                newPassword = f.newPassword,
+                passwordVisible = f.passwordVisible,
+            )
     }
 
     fun sendVerificationCode() {
@@ -105,13 +123,10 @@ class ForgotPasswordViewModel @Inject constructor(
                 onSuccess = { startCountdown() },
                 onFailure = { e ->
                     val f2 = currentForm()
-                    val resId = if (e is ApiException) {
-                        ErrorMessages.mapSendCodeError(e.message)
-                    } else {
-                        ErrorMessages.networkError()
-                    }
+                    val resId =
+                        ErrorMessages.forSendCode(e)
                     _uiState.value = ForgotPasswordUiState.Error(f2, resId)
-                }
+                },
             )
         }
     }
@@ -121,12 +136,13 @@ class ForgotPasswordViewModel @Inject constructor(
         val f = currentForm()
         _uiState.value = ForgotPasswordUiState.Countdown(f, 0)
 
-        countdownJob = viewModelScope.launch {
-            countdownUseCase().collect { seconds ->
-                val f2 = currentForm()
-                _uiState.value = ForgotPasswordUiState.Countdown(f2, seconds)
+        countdownJob =
+            viewModelScope.launch {
+                countdownUseCase().collect { seconds ->
+                    val f2 = currentForm()
+                    _uiState.value = ForgotPasswordUiState.Countdown(f2, seconds)
+                }
             }
-        }
     }
 
     fun resetPassword() {
@@ -148,22 +164,20 @@ class ForgotPasswordViewModel @Inject constructor(
         _uiState.value = ForgotPasswordUiState.Resetting(f)
 
         resetJob?.cancel()
-        resetJob = viewModelScope.launch {
-            val f2 = currentForm()
-            val result = authRepository.forgotPassword(f2.email, f2.verificationCode, f2.newPassword)
-            result.fold(
-                onSuccess = { _uiState.value = ForgotPasswordUiState.ResetSuccess(f2) },
-                onFailure = { e ->
-                    val f3 = currentForm()
-                    val resId = if (e is ApiException) {
-                        ErrorMessages.mapForgotError(e.message)
-                    } else {
-                        ErrorMessages.networkError()
-                    }
-                    _uiState.value = ForgotPasswordUiState.Error(f3, resId)
-                }
-            )
-        }
+        resetJob =
+            viewModelScope.launch {
+                val f2 = currentForm()
+                val result = authRepository.forgotPassword(f2.email, f2.verificationCode, f2.newPassword)
+                result.fold(
+                    onSuccess = { _uiState.value = ForgotPasswordUiState.ResetSuccess(f2) },
+                    onFailure = { e ->
+                        val f3 = currentForm()
+                        val resId =
+                            ErrorMessages.forForgot(e)
+                        _uiState.value = ForgotPasswordUiState.Error(f3, resId)
+                    },
+                )
+            }
     }
 
     override fun onCleared() {
@@ -177,11 +191,12 @@ class ForgotPasswordViewModel @Inject constructor(
         resetJob?.cancel()
         countdownJob?.cancel()
         val f = currentForm()
-        _uiState.value = ForgotPasswordUiState.Form(
-            email = f.email,
-            verificationCode = f.verificationCode,
-            newPassword = f.newPassword,
-            passwordVisible = f.passwordVisible
-        )
+        _uiState.value =
+            ForgotPasswordUiState.Form(
+                email = f.email,
+                verificationCode = f.verificationCode,
+                newPassword = f.newPassword,
+                passwordVisible = f.passwordVisible,
+            )
     }
 }

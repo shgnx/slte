@@ -18,7 +18,7 @@ internal data class FetchedConfig(
     val raw: String,
     val version: String,
     val latencyMs: Long,
-    val notModified: Boolean = false
+    val notModified: Boolean = false,
 )
 
 /** 多源并发竞速结果 */
@@ -26,19 +26,20 @@ internal data class RaceResult(
     /** 择优选中的配置；null = 全部源失败或非法 */
     val chosen: FetchedConfig?,
     /** 返回合法配置（含 304 命中）的源地址；用于记录"上次成功地址" */
-    val lastUrl: String?
+    val lastUrl: String?,
 )
 
 /**
- * 多配置源并发竞速：同时发起所有源，收集合法结果后按版本择优。
+ * 多配置源并发竞速：并发发起所有源，收集合法结果后按版本择优。
  *
- * 全部请求并发发出，任一源失败/非法不影响其他源；整体耗时受调用方
- * 协程超时约束（withTimeout），超时/取消时全部子请求随结构化并发一并取消。
- * fetch 由调用方注入（HTTP 实现与 Android 环境解耦），便于单元测试。
+ * 任一源失败/非法不影响其他源；整体耗时受调用方 withTimeout 约束，超时/取消时
+ * 全部子请求随结构化并发一并取消。fetch 由调用方注入，便于解耦单元测试。
  */
 internal object ConfigRace {
-
-    suspend fun race(urls: List<String>, fetch: suspend (String) -> FetchedConfig?): RaceResult {
+    suspend fun race(
+        urls: List<String>,
+        fetch: suspend (String) -> FetchedConfig?,
+    ): RaceResult {
         if (urls.isEmpty()) return RaceResult(null, null)
         return coroutineScope {
             val results = urls.map { url -> async { url to fetch(url) } }.awaitAll()
@@ -46,7 +47,7 @@ internal object ConfigRace {
             val chosen = ConfigValidation.pickBest(valid)
             RaceResult(
                 chosen = chosen,
-                lastUrl = chosen?.url
+                lastUrl = chosen?.url,
             )
         }
     }

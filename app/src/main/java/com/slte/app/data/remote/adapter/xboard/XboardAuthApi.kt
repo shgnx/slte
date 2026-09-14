@@ -2,6 +2,10 @@ package com.slte.app.data.remote.adapter.xboard
 
 import com.slte.app.BuildConfig
 import com.slte.app.data.remote.ApiException
+import com.slte.app.data.remote.adapter.AdapterExecute
+import com.slte.app.data.remote.adapter.orEmptyLogged
+import com.slte.app.data.remote.adapter.orFalseLogged
+import com.slte.app.data.remote.adapter.orNullLogged
 import com.slte.app.data.remote.api.AuthApi
 import com.slte.app.data.remote.api.dto.CheckoutResultDto
 import com.slte.app.data.remote.api.dto.CouponCheckResultDto
@@ -20,6 +24,7 @@ import com.slte.app.domain.model.RegisterConfig
 import com.slte.app.domain.model.ServerNode
 import com.slte.app.utils.ApiErrors
 import com.slte.app.utils.AppLog
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -27,20 +32,20 @@ import kotlinx.serialization.json.JsonPrimitive
 /**
  * Xboard 认证适配器：将 Xboard API 原始响应转换为领域层统一响应。
  *
- * Xboard 与 V2Board 存在格式差异（布尔开关、会话列表数组），
- * 差异已隔离在本包独立 DTO 中，不依赖 xiaov2b 适配器。
- * 鉴权由 OkHttp 拦截器统一注入。
+ * Xboard 与 V2Board 的格式差异（布尔开关、会话列表结构）已隔离在独立 DTO 中。
+ * 两套适配器的请求/响应类型族均不同，无法合并为一个类；共享的执行外壳
+ * （[AdapterExecute] 与 orEmptyLogged 等）已全部外提。
  */
 class XboardAuthApi(
     private val authApi: XboardAuthRetrofit,
     private val userApi: XboardUserRetrofit,
-    private val userPlanApi: XboardUserPlanRetrofit
+    private val userPlanApi: XboardUserPlanRetrofit,
 ) : AuthApi {
-
-    override suspend fun login(email: String, password: String): LoginResponseDto {
-        val response = executeXboard {
-            authApi.login(XboardLoginRequest(email, password))
-        }
+    override suspend fun login(
+        email: String,
+        password: String,
+    ): LoginResponseDto {
+        val response = AdapterExecute.typed { authApi.login(XboardLoginRequest(email, password)) }
         val data = response.data ?: throw ApiException("服务器返回数据为空", ApiErrors.EMPTY_DATA)
         AppLog.i("SLTE-Api", "login success")
         return data.toDomainLoginResponse()
@@ -50,45 +55,54 @@ class XboardAuthApi(
         email: String,
         password: String,
         emailCode: String?,
-        inviteCode: String?
+        inviteCode: String?,
     ): LoginResponseDto {
-        val response = executeXboard {
-            authApi.register(
-                XboardRegisterRequest(
-                    email = email,
-                    password = password,
-                    email_code = emailCode?.takeIf { it.isNotBlank() },
-                    invite_code = inviteCode?.takeIf { it.isNotBlank() }
+        val response =
+            AdapterExecute.typed {
+                authApi.register(
+                    XboardRegisterRequest(
+                        email = email,
+                        password = password,
+                        email_code = emailCode?.takeIf { it.isNotBlank() },
+                        invite_code = inviteCode?.takeIf { it.isNotBlank() },
+                    ),
                 )
-            )
-        }
+            }
         val data = response.data ?: throw ApiException("服务器返回数据为空", ApiErrors.EMPTY_DATA)
         AppLog.i("SLTE-Api", "register success")
         return data.toDomainLoginResponse()
     }
 
     override suspend fun fetchRegisterConfig(): RegisterConfig {
-        val response = executeXboard { authApi.fetchConfig() }
+        val response = AdapterExecute.typed { authApi.fetchConfig() }
         val data = response.data ?: throw ApiException("获取注册配置失败", ApiErrors.REGISTER_CONFIG)
         return RegisterConfig(
             emailVerifyEnabled = data.is_email_verify == 1,
-            inviteForceEnabled = data.is_invite_force == 1
+            inviteForceEnabled = data.is_invite_force == 1,
         )
     }
 
-    override suspend fun forgotPassword(email: String, emailCode: String, password: String) {
-        executeXboard {
+    override suspend fun forgotPassword(
+        email: String,
+        emailCode: String,
+        password: String,
+    ) {
+        AdapterExecute.typed {
             authApi.forgotPassword(XboardForgotRequest(email, password, emailCode))
         }
         AppLog.i("SLTE-Api", "forgotPassword success")
     }
 
-    override suspend fun sendEmailCode(email: String, purpose: EmailCodePurpose) {
-        val isForget = when (purpose) {
-            EmailCodePurpose.REGISTER -> 0
-            EmailCodePurpose.FORGOT_PASSWORD -> 1
-        }
-        executeXboard {
+    override suspend fun sendEmailCode(
+        email: String,
+        purpose: EmailCodePurpose,
+    ) {
+        val isForget =
+            when (purpose) {
+                EmailCodePurpose.REGISTER -> 0
+                EmailCodePurpose.FORGOT_PASSWORD -> 1
+            }
+        AdapterExecute.typed {
             authApi.sendEmailCode(XboardSendCodeRequest(email, isforget = isForget))
         }
         AppLog.i("SLTE-Api", "sendEmailCode success purpose=$purpose")
@@ -96,29 +110,38 @@ class XboardAuthApi(
 
     override suspend fun revokeActiveSessions(authData: String) {
         // 显式传 Authorization 头：logout() 先清本地会话，拦截器此时已取不到 token
-        val data = executeXboard { userApi.getActiveSessions(authData) }.data
-            ?: return
-        // 会话列表兼容两种响应：数组（元素含 id 字段）或对象（key 为会话 id），
-        // 逐个吊销保证登出后服务端会话失效；解析为空时留痕，便于发现格式不兼容
-        val sessionIds = when (data) {
-            is JsonArray -> data.mapNotNull { item ->
-                (item as? JsonObject)?.get("id")?.let { v -> (v as? JsonPrimitive)?.content }
+        val data =
+            AdapterExecute.typed { userApi.getActiveSessions(authData) }.data
+                ?: return
+        // 会话列表兼容数组（元素含 id 字段）与对象（key 为会话 id）两种响应，
+        // 逐个吊销保证登出后服务端会话失效；解析为空时留痕以暴露格式不兼容
+        val sessionIds =
+            when (data) {
+                is JsonArray ->
+                    data.mapNotNull { item ->
+                        (item as? JsonObject)?.get("id")?.let { v -> (v as? JsonPrimitive)?.content }
+                    }
+                is JsonObject -> data.keys.toList()
+                else -> emptyList()
             }
-            is JsonObject -> data.keys.toList()
-            else -> emptyList()
-        }
         if (sessionIds.isEmpty()) {
             AppLog.w("SLTE-Api", "revokeActiveSessions: 会话列表解析为空，登出后服务端会话可能未吊销")
         }
         sessionIds.forEach { sessionId ->
-            executeXboard {
-                userApi.removeActiveSession(authData, XboardRemoveSessionRequest(sessionId))
+            try {
+                AdapterExecute.typed {
+                    userApi.removeActiveSession(authData, XboardRemoveSessionRequest(sessionId))
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLog.w("SLTE-Api", "revokeActiveSessions: 会话吊销失败，继续吊销其余会话")
             }
         }
     }
 
     override suspend fun fetchUserInfo(): UserInfoDto {
-        val response = executeXboard { userApi.fetchUserInfo() }
+        val response = AdapterExecute.typed { userApi.fetchUserInfo() }
         val data = response.data ?: throw ApiException("获取用户信息失败", ApiErrors.USER_INFO)
         if (BuildConfig.DEBUG) {
             AppLog.d("SLTE-Api", "fetchUserInfo: planId=${data.planId}, expiredAt=${data.expiredAt}, transferEnable=${data.transferEnable}")
@@ -127,25 +150,28 @@ class XboardAuthApi(
     }
 
     override suspend fun updateRemindExpire(enabled: Boolean) {
-        executeXboard {
+        AdapterExecute.typed {
             userApi.updateUserSettings(XboardUpdateUserRequest(remindExpire = if (enabled) 1 else 0))
         }
     }
 
     override suspend fun updateRemindTraffic(enabled: Boolean) {
-        executeXboard {
+        AdapterExecute.typed {
             userApi.updateUserSettings(XboardUpdateUserRequest(remindTraffic = if (enabled) 1 else 0))
         }
     }
 
-    override suspend fun changePassword(oldPassword: String, newPassword: String) {
-        executeXboard {
+    override suspend fun changePassword(
+        oldPassword: String,
+        newPassword: String,
+    ) {
+        AdapterExecute.typed {
             userApi.changePassword(XboardChangePasswordRequest(oldPassword, newPassword))
         }
     }
 
     override suspend fun fetchSubscribeInfo(): SubscribeInfoDto {
-        val response = executeXboard { userApi.fetchSubscribe() }
+        val response = AdapterExecute.typed { userApi.fetchSubscribe() }
         val data = response.data
         if (data == null) {
             if (BuildConfig.DEBUG) {
@@ -160,25 +186,21 @@ class XboardAuthApi(
     }
 
     override suspend fun fetchOrders(): List<OrderInfoDto> {
-        val response = executeXboard { userApi.fetchOrders() }
-        val data = response.data ?: return emptyList()
+        val response = AdapterExecute.typed { userApi.fetchOrders() }
+        val data = response.data.orEmptyLogged("fetchOrders")
         if (BuildConfig.DEBUG) {
             AppLog.d("SLTE-Api", "fetchOrders: 共 ${data.size} 条订单")
         }
         return data.map { it.toDomainOrder() }
     }
 
-
     override suspend fun fetchPlans(): List<PlanInfoDto> {
         if (BuildConfig.DEBUG) {
             AppLog.d("SLTE-Api", "fetchPlans: 请求 /user/plan/fetch")
         }
-        val response = executeXboard { userPlanApi.fetchPlans() }
-        val data = response.data
-        if (data == null && response.message != null) {
-            throw ApiException(response.message)
-        }
-        if (data == null) return emptyList()
+        // message 非空时 typed 已抛后端文案，此处只处理 data 与 message 均为空的情形
+        val response = AdapterExecute.typed { userPlanApi.fetchPlans() }
+        val data = response.data.orEmptyLogged("fetchPlans")
         if (BuildConfig.DEBUG) {
             AppLog.d("SLTE-Api", "fetchPlans: 返回 ${data.size} 条套餐")
         }
@@ -188,11 +210,12 @@ class XboardAuthApi(
     override suspend fun createOrder(
         planId: Int,
         period: String,
-        couponCode: String?
+        couponCode: String?,
     ): CreateOrderResultDto {
-        val response = executeXboard {
-            userApi.createOrder(XboardCreateOrderRequest(planId, period, couponCode))
-        }
+        val response =
+            AdapterExecute.typed {
+                userApi.createOrder(XboardCreateOrderRequest(planId, period, couponCode))
+            }
         val tradeNo = response.data ?: throw ApiException("创建订单失败", ApiErrors.CREATE_ORDER)
         if (BuildConfig.DEBUG) {
             AppLog.d("SLTE-Api", "createOrder success: tradeNo=$tradeNo")
@@ -201,13 +224,16 @@ class XboardAuthApi(
     }
 
     override suspend fun getOrderDetail(tradeNo: String): OrderInfoDto {
-        val response = executeXboard { userApi.getOrderDetail(tradeNo) }
+        val response = AdapterExecute.typed { userApi.getOrderDetail(tradeNo) }
         val data = response.data ?: throw ApiException("获取订单详情失败", ApiErrors.ORDER_DETAIL)
         return data.toDomainOrder()
     }
 
-    override suspend fun checkCoupon(code: String, planId: Int?): CouponCheckResultDto {
-        val response = executeXboard { userApi.checkCoupon(XboardCouponCheckRequest(code, planId)) }
+    override suspend fun checkCoupon(
+        code: String,
+        planId: Int?,
+    ): CouponCheckResultDto {
+        val response = AdapterExecute.typed { userApi.checkCoupon(XboardCouponCheckRequest(code, planId)) }
         val data = response.data ?: throw ApiException("优惠券无效", ApiErrors.COUPON_INVALID)
         if (BuildConfig.DEBUG) {
             AppLog.d("SLTE-Api", "checkCoupon raw: type=${data.type} value=${data.value} name=${data.name}")
@@ -217,31 +243,30 @@ class XboardAuthApi(
 
     override suspend fun checkoutOrder(
         tradeNo: String,
-        paymentMethod: Int
+        paymentMethod: Int,
     ): CheckoutResultDto {
-        val body = executeXboardRaw {
-            userApi.checkoutOrder(XboardCheckoutRequest(tradeNo, paymentMethod))
-        }
+        val body =
+            AdapterExecute.raw {
+                userApi.checkoutOrder(XboardCheckoutRequest(tradeNo, paymentMethod))
+            }
         return body.use { CheckoutResultDto.fromRawJson(it.string()) }
-            ?: throw ApiException("服务器响应异常", ApiErrors.NETWORK)
+            ?: throw ApiException("结算响应无法解析", ApiErrors.CHECKOUT)
     }
 
     override suspend fun getPaymentMethods(): List<PaymentMethodDto> {
-        val response = executeXboard { userApi.getPaymentMethods() }
-        val data = response.data ?: return emptyList()
-        return data.map { it.toDomainPaymentMethod() }
+        val response = AdapterExecute.typed { userApi.getPaymentMethods() }
+        return response.data.orEmptyLogged("getPaymentMethods").map { it.toDomainPaymentMethod() }
     }
 
     override suspend fun cancelOrder(tradeNo: String) {
-        executeXboard { userApi.cancelOrder(XboardCancelOrderRequest(tradeNo)) }
+        AdapterExecute.typed { userApi.cancelOrder(XboardCancelOrderRequest(tradeNo)) }
         if (BuildConfig.DEBUG) {
             AppLog.d("SLTE-Api", "cancelOrder: tradeNo=$tradeNo")
         }
     }
 
-
     override suspend fun fetchInviteInfo(): InviteInfo {
-        val response = executeXboard { userApi.fetchInviteInfo() }
+        val response = AdapterExecute.typed { userApi.fetchInviteInfo() }
         val data = response.data ?: throw ApiException("获取邀请信息失败", ApiErrors.INVITE_INFO)
         if (BuildConfig.DEBUG) {
             AppLog.d("SLTE-Api", "fetchInviteInfo: codes=${data.codes.size}, stat=${data.stat}")
@@ -250,13 +275,16 @@ class XboardAuthApi(
     }
 
     override suspend fun generateInviteCode(): Boolean {
-        val response = executeXboard { userApi.generateInviteCode() }
-        return response.data ?: false
+        val response = AdapterExecute.typed { userApi.generateInviteCode() }
+        return response.data.orFalseLogged("generateInviteCode")
     }
 
-    override suspend fun fetchCommissionRecords(page: Int, pageSize: Int): List<CommissionRecord> {
-        val response = executeXboard { userApi.fetchCommissionRecords(page, pageSize) }
-        val data = response.data ?: return emptyList()
+    override suspend fun fetchCommissionRecords(
+        page: Int,
+        pageSize: Int,
+    ): List<CommissionRecord> {
+        val response = AdapterExecute.typed { userApi.fetchCommissionRecords(page, pageSize) }
+        val data = response.data.orEmptyLogged("fetchCommissionRecords")
         if (BuildConfig.DEBUG) {
             AppLog.d("SLTE-Api", "fetchCommissionRecords: ${data.size} 条记录")
         }
@@ -264,36 +292,46 @@ class XboardAuthApi(
     }
 
     override suspend fun transferCommission(transferAmount: Int): Boolean {
-        val response = executeXboard {
-            userApi.transferCommission(XboardTransferRequest(transferAmount))
-        }
-        return response.data ?: false
+        val response =
+            AdapterExecute.typed {
+                userApi.transferCommission(XboardTransferRequest(transferAmount))
+            }
+        return response.data.orFalseLogged("transferCommission")
     }
 
-    override suspend fun withdrawCommission(withdrawMethod: String, withdrawAccount: String): Boolean {
-        val response = executeXboard {
-            userApi.withdrawCommission(XboardWithdrawRequest(withdrawMethod, withdrawAccount))
-        }
+    override suspend fun withdrawCommission(
+        withdrawMethod: String,
+        withdrawAccount: String,
+    ): Boolean {
+        val response =
+            AdapterExecute.typed {
+                userApi.withdrawCommission(XboardWithdrawRequest(withdrawMethod, withdrawAccount))
+            }
         if (BuildConfig.DEBUG) {
             AppLog.d("SLTE-Api", "withdrawCommission: method=$withdrawMethod")
         }
-        return response.data ?: false
+        return response.data.orFalseLogged("withdrawCommission")
     }
 
-
-    override suspend fun fetchNotices(page: Int, pageSize: Int): List<Notice> {
-        val response = executeXboard { userApi.fetchNotices(page, pageSize) }
-        val data = response.data ?: return emptyList()
-        return data.map { it.toDomain() }
+    override suspend fun fetchWithdrawMethods(): List<String> {
+        val response = AdapterExecute.typed { userApi.fetchUserCommConfig() }
+        val data = response.data.orNullLogged("fetchWithdrawMethods") ?: return emptyList()
+        if (data.withdrawClose == 1) return emptyList()
+        return data.withdrawMethods.orEmpty()
     }
 
+    override suspend fun fetchNotices(
+        page: Int,
+        pageSize: Int,
+    ): List<Notice> {
+        val response = AdapterExecute.typed { userApi.fetchNotices(page, pageSize) }
+        return response.data.orEmptyLogged("fetchNotices").map { it.toDomain() }
+    }
 
     override suspend fun fetchServers(): List<ServerNode> {
-        val response = executeXboard { userApi.fetchServers() }
-        val data = response.data ?: return emptyList()
-        return data.map { it.toServerNode() }
+        val response = AdapterExecute.typed { userApi.fetchServers() }
+        return response.data.orEmptyLogged("fetchServers").map { it.toServerNode() }
     }
 
-    override suspend fun fetchSubscribeYaml(token: String): okhttp3.ResponseBody? =
-        userApi.fetchSubscribeYaml(token)
+    override suspend fun fetchSubscribeYaml(url: String): okhttp3.ResponseBody? = userApi.fetchSubscribeYaml(url)
 }

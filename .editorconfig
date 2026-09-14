@@ -1,0 +1,36 @@
+# 代码风格基准（IDE 与 ktlint 共用；ktlint 规则以本文件为准）
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+
+[*.{kt,kts}]
+indent_size = 4
+# 代码风格：与 Android Studio / IntelliJ 默认一致（本项目既有风格），
+# 不用 ktlint_official —— 后者会把 `@Inject constructor` 等改写成全项目不认的排版
+ktlint_code_style = android_studio
+# 注释与字符串里允许中文/emoji，不做 ASCII 限制
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+# ktlint：关闭「长行长度」「函数命名」——中文注释与 Compose 链式调用较多，
+# 这两条会产生大量噪声而收益极低；其余标准规则全部启用（通配符导入已全仓无冲突，按默认启用）
+ktlint_standard_max-line-length = disabled
+ktlint_standard_function-naming = disabled
+# 以下命名规则与本项目**有意为之**的约定冲突，逐条关闭并说明原因：
+#  - class-naming：Dimens 用 `gap` / `icon` / `size` 小写对象名做 API 分层（Dimens.gap.lg）
+#  - property-naming：`countdownSeconds` 等常量按用途命名，非 SCREAMING_SNAKE
+#  - filename：一个文件内聚多个强相关类型（如 DashboardModels.kt、验证码常量）
+ktlint_standard_class-naming = disabled
+ktlint_standard_property-naming = disabled
+ktlint_standard_filename = disabled
+
+[*.{yml,yaml,json,md}]
+indent_size = 2
+
+[*.xml]
+indent_size = 4

@@ -2,26 +2,26 @@ package com.slte.app.ui.screen.about
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slte.app.BuildConfig
 import com.slte.app.R
+import com.slte.app.data.remote.config.RemoteConfig
 import com.slte.app.kernel.KernelProxy
 import com.slte.app.utils.AppLog
 import com.slte.app.utils.sanitizeLog
-import com.slte.app.data.remote.config.RemoteConfig
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import javax.inject.Inject
 
 /**
  * 更新弹窗展示判定（与常规软件一致）：
@@ -34,7 +34,7 @@ internal fun shouldShowUpdateDialog(
     currentVersion: String,
     force: Boolean,
     dismissedInSession: Boolean,
-    manual: Boolean
+    manual: Boolean,
 ): Boolean {
     if (updateVersion.isBlank() || compareVersions(updateVersion, currentVersion) <= 0) return false
     if (force) return true
@@ -42,7 +42,10 @@ internal fun shouldShowUpdateDialog(
 }
 
 /** 版本号比较：a > b 返回正数；忽略 v 前缀与 -后缀（如 1.0.0-debug 视为 1.0.0） */
-internal fun compareVersions(a: String, b: String): Int {
+internal fun compareVersions(
+    a: String,
+    b: String,
+): Int {
     val pa = a.trimStart('v').split('.', '-').map { it.toIntOrNull() ?: 0 }
     val pb = b.trimStart('v').split('.', '-').map { it.toIntOrNull() ?: 0 }
     for (i in 0 until maxOf(pa.size, pb.size)) {
@@ -72,7 +75,7 @@ sealed interface UpdateUiState {
         val versionName: String,
         val changelogTitle: String?,
         val changelog: String?,
-        val force: Boolean
+        val force: Boolean,
     ) : UpdateUiState
 
     /** 已是最新版本（提示后回到 Idle） */
@@ -82,7 +85,9 @@ sealed interface UpdateUiState {
     data object Error : UpdateUiState
 
     /** 打开下载页失败（提示后回到 Idle） */
-    data class Failed(val messageRes: Int) : UpdateUiState
+    data class Failed(
+        val messageRes: Int,
+    ) : UpdateUiState
 }
 
 /**
@@ -92,12 +97,13 @@ sealed interface UpdateUiState {
  * 点击"立即更新"跳转系统浏览器下载安装包（传统下载方式）。
  */
 @HiltViewModel
-class UpdateViewModel @Inject constructor(
+class UpdateViewModel
+@Inject
+constructor(
     private val remoteConfig: RemoteConfig,
     private val kernelProxy: KernelProxy,
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
-
     private val _state = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
     val state: StateFlow<UpdateUiState> = _state.asStateFlow()
 
@@ -106,6 +112,9 @@ class UpdateViewModel @Inject constructor(
 
     /** 会话内用户已点过"稍后提醒/关闭"：自动检查不再打扰，下次启动重新提醒 */
     private var dismissedInSession = false
+
+    /** 当前弹窗对应的配置指纹（版本+force），变化时允许重新评估 */
+    private var lastShownSignature: String? = null
 
     init {
         viewModelScope.launch {
@@ -126,11 +135,15 @@ class UpdateViewModel @Inject constructor(
 
     /**
      * 检查更新。
-     * @param manual true = 用户主动点击（无新版时提示"已是最新"）；false = 自动检查（静默）。手动检测绕过短时间缓存，拉取失败且无缓存时明确提示失败。
+     *
+     * @param manual true 为用户主动点击（无新版时提示"已是最新"），false 为自动检查（静默）；手动检测绕过短时间缓存，拉取失败且无缓存时明确提示失败
      */
     fun checkUpdate(manual: Boolean = false) {
-        if (_state.value is UpdateUiState.Checking || _state.value is UpdateUiState.Available) return
-        _state.value = UpdateUiState.Checking
+        if (_state.value is UpdateUiState.Checking) return
+        // 手动检查：先进入检查态让按钮显示加载动画（已有更新弹窗时保持弹窗，不打断）
+        if (manual && _state.value !is UpdateUiState.Available) {
+            _state.value = UpdateUiState.Checking
+        }
         viewModelScope.launch {
             if (manual) {
                 withTimeoutOrNull(REFRESH_TIMEOUT_MS) {
@@ -138,28 +151,36 @@ class UpdateViewModel @Inject constructor(
                 }
             }
             val cfg = remoteConfig.data
-            val show = shouldShowUpdateDialog(
+            val signature = "${cfg.updateVersion}|${cfg.updateForce}"
+            if (_state.value is UpdateUiState.Available && signature == lastShownSignature) return@launch
+            _state.value = UpdateUiState.Checking
+            val show =
+                shouldShowUpdateDialog(
                     updateVersion = cfg.updateVersion,
                     currentVersion = BuildConfig.VERSION_NAME,
                     force = cfg.updateForce,
                     dismissedInSession = dismissedInSession,
-                    manual = manual
+                    manual = manual,
                 )
             if (!show) {
-                _state.value = when {
-                    manual && cfg.updateVersion.isBlank() -> UpdateUiState.Error
-                    manual -> UpdateUiState.Latest
-                    else -> UpdateUiState.Idle
-                }
+                lastShownSignature = null
+                _state.value =
+                    when {
+                        manual && cfg.updateVersion.isBlank() -> UpdateUiState.Error
+                        manual -> UpdateUiState.Latest
+                        else -> UpdateUiState.Idle
+                    }
                 return@launch
             }
             AppLog.i("SLTE-Update", "发现新版 ${cfg.updateVersion} force=${cfg.updateForce} manual=$manual")
-            _state.value = UpdateUiState.Available(
-                versionName = cfg.updateVersion,
-                changelogTitle = cfg.updateChangelogTitle.ifBlank { null },
-                changelog = cfg.updateChangelog.ifBlank { null },
-                force = cfg.updateForce
-            )
+            lastShownSignature = signature
+            _state.value =
+                UpdateUiState.Available(
+                    versionName = cfg.updateVersion,
+                    changelogTitle = cfg.updateChangelogTitle.ifBlank { null },
+                    changelog = cfg.updateChangelog.ifBlank { null },
+                    force = cfg.updateForce,
+                )
         }
     }
 
@@ -174,8 +195,9 @@ class UpdateViewModel @Inject constructor(
 
         AppLog.i("SLTE-Update", "跳转浏览器下载 ${remoteConfig.data.updateVersion}")
         try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val intent =
+                Intent(Intent.ACTION_VIEW, url.toUri())
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
         } catch (e: Exception) {
             AppLog.w("SLTE-Update", "打开下载页失败: ${sanitizeLog(e.message ?: "Unknown")}")

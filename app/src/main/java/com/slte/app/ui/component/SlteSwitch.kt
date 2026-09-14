@@ -1,9 +1,6 @@
 package com.slte.app.ui.component
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -28,7 +25,7 @@ import com.slte.app.utils.Dimens
 
 /**
  * 干净胶囊开关：无阴影、无边框。
- * 关闭 = 灰胶囊 + 白圆；开启 = 淡蓝胶囊 + 主题蓝圆，点击左右平滑切换。
+ * 关闭 = 灰胶囊 + 白圆；开启 = 淡蓝胶囊 + 主题蓝圆，点击即时切换。
  * 全部取主题色（primary/primaryContainer/outlineVariant/surface），自动适配暗色主题。
  */
 @Composable
@@ -36,7 +33,7 @@ fun SlteSwitch(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
 ) {
     val scheme = MaterialTheme.colorScheme
     val trackOff = scheme.outlineVariant
@@ -45,31 +42,36 @@ fun SlteSwitch(
     val thumbOn = scheme.primary
     val stateDesc = if (checked) stringResource(R.string.switch_state_on) else stringResource(R.string.switch_state_off)
 
-    val offset by animateDpAsState(
-        targetValue = if (checked) Dimens.switchTrackWidth - Dimens.switchThumbSize - Dimens.switchThumbPadding * 2 else 0.dp,
-        animationSpec = tween(180),
-        label = "slte-switch-offset"
-    )
+    val offset = if (checked) Dimens.switchTrackWidth - Dimens.switchThumbSize - Dimens.switchThumbPadding * 2 else 0.dp
 
+    // 触控区固定 48dp 高（无障碍最小目标）：语义与点击挂在外层，视觉轨道仍为 48×28
     Box(
-        modifier = modifier
-            .size(width = Dimens.switchTrackWidth, height = Dimens.switchTrackHeight)
-            .clip(RoundedCornerShape(Dimens.switchTrackHeight / 2))
-            .background(if (checked) trackOn else trackOff)
+        modifier =
+        modifier
+            .size(width = Dimens.switchTrackWidth, height = Dimens.switchTouchHeight)
             .semantics {
                 role = Role.Switch
                 stateDescription = stateDesc
-            }
-            .toggleable(value = checked, enabled = enabled, role = Role.Switch) { onCheckedChange(it) }
-            .padding(Dimens.switchThumbPadding),
-        contentAlignment = Alignment.CenterStart
+            }.toggleable(value = checked, enabled = enabled, role = Role.Switch) { onCheckedChange(it) },
+        contentAlignment = Alignment.Center,
     ) {
         Box(
-            modifier = Modifier
-                .offset(x = offset)
-                .size(Dimens.switchThumbSize)
-                .clip(CircleShape)
-                .background(if (checked) thumbOn else thumbOff)
-        )
+            modifier =
+            Modifier
+                .size(width = Dimens.switchTrackWidth, height = Dimens.switchTrackHeight)
+                .clip(RoundedCornerShape(Dimens.switchTrackHeight / 2))
+                .background(if (checked) trackOn else trackOff)
+                .padding(Dimens.switchThumbPadding),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Box(
+                modifier =
+                Modifier
+                    .offset(x = offset)
+                    .size(Dimens.switchThumbSize)
+                    .clip(CircleShape)
+                    .background(if (checked) thumbOn else thumbOff),
+            )
+        }
     }
 }

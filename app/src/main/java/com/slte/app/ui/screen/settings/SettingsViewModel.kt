@@ -4,17 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slte.app.R
 import com.slte.app.data.local.LocaleStore
+import com.slte.app.data.local.ThemePreference
 import com.slte.app.data.repository.AuthRepository
 import com.slte.app.data.repository.SubscribeRepository
 import com.slte.app.kernel.KernelProxy
-import com.slte.app.data.local.ThemePreference
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.util.Locale
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.Locale
-import javax.inject.Inject
 
 /**
  * 到期/流量邮件提醒开关状态。
@@ -34,7 +34,7 @@ data class SettingsData(
     /** 深色模式（本地偏好，默认关 = 浅色） */
     val darkModeEnabled: Boolean = false,
     /** 当前界面语言（null = 跟随系统） */
-    val locale: Locale? = null
+    val locale: Locale? = null,
 )
 
 data class ChangePasswordState(
@@ -46,31 +46,33 @@ data class ChangePasswordState(
     val newPasswordVisible: Boolean = false,
     val submitting: Boolean = false,
     val errorMessageRes: Int? = null,
-    val success: Boolean = false
+    val success: Boolean = false,
 )
 
 /**
  * 其他设置页 ViewModel：加载并更新到期/流量邮件提醒开关。
  */
 @HiltViewModel
-class SettingsViewModel @Inject constructor(
+class SettingsViewModel
+@Inject
+constructor(
     private val authRepository: AuthRepository,
     private val subscribeRepository: SubscribeRepository,
     private val kernelProxy: KernelProxy,
     private val themePreference: ThemePreference,
-    private val localeStore: LocaleStore
+    private val localeStore: LocaleStore,
 ) : ViewModel() {
-
-    private val _data = MutableStateFlow(
-        SettingsData(
-            darkModeEnabled = themePreference.dark.value,
-            locale = localeStore.locale.value
+    private val _data =
+        MutableStateFlow(
+            SettingsData(
+                darkModeEnabled = themePreference.dark.value,
+                locale = localeStore.locale.value,
+            ),
         )
-    )
     val data: StateFlow<SettingsData> = _data.asStateFlow()
 
-    private val _changePassword = MutableStateFlow(ChangePasswordState())
-    val changePasswordState: StateFlow<ChangePasswordState> = _changePassword.asStateFlow()
+    private val _changePasswordState = MutableStateFlow(ChangePasswordState())
+    val changePasswordState: StateFlow<ChangePasswordState> = _changePasswordState.asStateFlow()
 
     init {
         loadRemindSettings()
@@ -102,14 +104,14 @@ class SettingsViewModel @Inject constructor(
         if (_data.value.tunStackMode == mode) return
         viewModelScope.launch {
             kernelProxy.setTunStack(mode.value)
-            _data.value = _data.value.copy(
-                tunStackMode = mode,
-                tunStackSwitchCount = _data.value.tunStackSwitchCount + 1
-            )
+            _data.value =
+                _data.value.copy(
+                    tunStackMode = mode,
+                    tunStackSwitchCount = _data.value.tunStackSwitchCount + 1,
+                )
         }
     }
 
-    /** TUN 堆栈切换 Toast 弹出后消费 */
     fun consumeTunStackSwitch() {
         _data.value = _data.value.copy(tunStackSwitchCount = 0)
     }
@@ -117,16 +119,17 @@ class SettingsViewModel @Inject constructor(
     /** 进入页面时直接请求服务端 remind_expire/remind_traffic 覆盖默认值 */
     fun loadRemindSettings() {
         viewModelScope.launch {
-            subscribeRepository.fetchUserInfo(force = true)
+            subscribeRepository
+                .fetchUserInfo(force = true)
                 .onSuccess { user ->
-                    _data.value = _data.value.copy(
-                        expireRemindEnabled = user.remindExpire == 1,
-                        trafficRemindEnabled = user.remindTraffic == 1,
-                        remindLoading = false,
-                        errorMessageRes = null
-                    )
-                }
-                .onFailure {
+                    _data.value =
+                        _data.value.copy(
+                            expireRemindEnabled = user.remindExpire == 1,
+                            trafficRemindEnabled = user.remindTraffic == 1,
+                            remindLoading = false,
+                            errorMessageRes = null,
+                        )
+                }.onFailure {
                     // 请求失败保持默认开启，不打扰用户
                     _data.value = _data.value.copy(remindLoading = false)
                 }
@@ -138,17 +141,18 @@ class SettingsViewModel @Inject constructor(
         if (_data.value.remindSaving) return
         _data.value = _data.value.copy(expireRemindEnabled = enabled, remindSaving = true, errorMessageRes = null)
         viewModelScope.launch {
-            authRepository.updateRemindExpire(enabled)
+            authRepository
+                .updateRemindExpire(enabled)
                 .onSuccess {
                     _data.value = _data.value.copy(remindSaving = false)
-                }
-                .onFailure {
+                }.onFailure {
                     // 回滚开关状态
-                    _data.value = _data.value.copy(
-                        expireRemindEnabled = !enabled,
-                        remindSaving = false,
-                        errorMessageRes = R.string.settings_remind_save_failed
-                    )
+                    _data.value =
+                        _data.value.copy(
+                            expireRemindEnabled = !enabled,
+                            remindSaving = false,
+                            errorMessageRes = R.string.settings_remind_save_failed,
+                        )
                 }
         }
     }
@@ -158,88 +162,90 @@ class SettingsViewModel @Inject constructor(
         if (_data.value.remindSaving) return
         _data.value = _data.value.copy(trafficRemindEnabled = enabled, remindSaving = true, errorMessageRes = null)
         viewModelScope.launch {
-            authRepository.updateRemindTraffic(enabled)
+            authRepository
+                .updateRemindTraffic(enabled)
                 .onSuccess {
                     _data.value = _data.value.copy(remindSaving = false)
-                }
-                .onFailure {
-                    _data.value = _data.value.copy(
-                        trafficRemindEnabled = !enabled,
-                        remindSaving = false,
-                        errorMessageRes = R.string.settings_remind_save_failed
-                    )
+                }.onFailure {
+                    _data.value =
+                        _data.value.copy(
+                            trafficRemindEnabled = !enabled,
+                            remindSaving = false,
+                            errorMessageRes = R.string.settings_remind_save_failed,
+                        )
                 }
         }
     }
 
     fun showChangePassword() {
-        _changePassword.value = ChangePasswordState(showChangePasswordSheet = true)
+        _changePasswordState.value = ChangePasswordState(showChangePasswordSheet = true)
     }
 
     fun dismissChangePassword() {
-        _changePassword.value = _changePassword.value.copy(showChangePasswordSheet = false)
+        _changePasswordState.value = _changePasswordState.value.copy(showChangePasswordSheet = false)
     }
 
     fun onOldPasswordChange(value: String) {
-        _changePassword.value = _changePassword.value.copy(oldPassword = value, errorMessageRes = null)
+        _changePasswordState.value = _changePasswordState.value.copy(oldPassword = value, errorMessageRes = null)
     }
 
     fun onNewPasswordChange(value: String) {
-        _changePassword.value = _changePassword.value.copy(newPassword = value, errorMessageRes = null)
+        _changePasswordState.value = _changePasswordState.value.copy(newPassword = value, errorMessageRes = null)
     }
 
     fun onConfirmPasswordChange(value: String) {
-        _changePassword.value = _changePassword.value.copy(confirmPassword = value, errorMessageRes = null)
+        _changePasswordState.value = _changePasswordState.value.copy(confirmPassword = value, errorMessageRes = null)
     }
 
     fun toggleOldPasswordVisible() {
-        _changePassword.value = _changePassword.value.copy(oldPasswordVisible = !_changePassword.value.oldPasswordVisible)
+        _changePasswordState.value = _changePasswordState.value.copy(oldPasswordVisible = !_changePasswordState.value.oldPasswordVisible)
     }
 
     fun toggleNewPasswordVisible() {
-        _changePassword.value = _changePassword.value.copy(newPasswordVisible = !_changePassword.value.newPasswordVisible)
+        _changePasswordState.value = _changePasswordState.value.copy(newPasswordVisible = !_changePasswordState.value.newPasswordVisible)
     }
 
     /** 提交修改密码：本地校验 → 服务端 → 成功后关闭弹窗并提示 */
     fun submitChangePassword() {
-        val state = _changePassword.value
+        val state = _changePasswordState.value
         if (state.submitting) return
-        val error = when {
-            state.oldPassword.isBlank() -> R.string.settings_change_pwd_old_required
-            state.newPassword.length < 8 -> R.string.settings_change_pwd_too_short
-            state.newPassword != state.confirmPassword -> R.string.settings_change_pwd_mismatch
-            else -> null
-        }
+        val error =
+            when {
+                state.oldPassword.isBlank() -> R.string.settings_change_pwd_old_required
+                state.newPassword.length < 8 -> R.string.settings_change_pwd_too_short
+                state.newPassword != state.confirmPassword -> R.string.settings_change_pwd_mismatch
+                else -> null
+            }
         if (error != null) {
-            _changePassword.value = state.copy(errorMessageRes = error)
+            _changePasswordState.value = state.copy(errorMessageRes = error)
             return
         }
-        _changePassword.value = state.copy(submitting = true, errorMessageRes = null)
+        _changePasswordState.value = state.copy(submitting = true, errorMessageRes = null)
         viewModelScope.launch {
-            authRepository.changePassword(state.oldPassword, state.newPassword)
+            authRepository
+                .changePassword(state.oldPassword, state.newPassword)
                 .onSuccess {
-                    _changePassword.value = _changePassword.value.copy(
-                        submitting = false,
-                        success = true,
-                        showChangePasswordSheet = false
-                    )
-                }
-                .onFailure {
-                    _changePassword.value = _changePassword.value.copy(
-                        submitting = false,
-                        errorMessageRes = R.string.settings_change_pwd_failed
-                    )
+                    _changePasswordState.value =
+                        _changePasswordState.value.copy(
+                            submitting = false,
+                            success = true,
+                            showChangePasswordSheet = false,
+                        )
+                }.onFailure {
+                    _changePasswordState.value =
+                        _changePasswordState.value.copy(
+                            submitting = false,
+                            errorMessageRes = R.string.settings_change_pwd_failed,
+                        )
                 }
         }
     }
 
-    /** 修改密码成功提示消费后关闭 */
     fun consumeChangePasswordSuccess() {
-        _changePassword.value = _changePassword.value.copy(success = false)
+        _changePasswordState.value = _changePasswordState.value.copy(success = false)
     }
 
-    /** 修改密码错误提示消费后关闭 */
     fun consumeChangePasswordError() {
-        _changePassword.value = _changePassword.value.copy(errorMessageRes = null)
+        _changePasswordState.value = _changePasswordState.value.copy(errorMessageRes = null)
     }
 }

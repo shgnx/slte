@@ -4,5 +4,7 @@
          两侧修改时需同步，否则启动闪色 / Launcher 图标色漂移 -->
     <color name="light_background">#FFF1F1F3</color>
     <color name="dark_background">#FF0E1621</color>
+    <!-- 启动图标渐变两端：被 drawable/ic_launcher_background.xml 与旧版回退图标（mipmap-*/ic_launcher*.png）共用 -->
     <color name="ic_launcher_background">#FF229AF0</color>
+    <color name="ic_launcher_background_end">#FF01C9FB</color>
 </resources>

@@ -5,9 +5,7 @@ package com.slte.app.data.remote.api.dto
  */
 data class OrderInfoDto(
     val id: Int,
-    /** 订单号 */
     val tradeNo: String,
-    /** 套餐名称 */
     val planName: String,
     /** 金额（分） */
     val totalAmount: Int,
@@ -28,5 +26,5 @@ data class OrderInfoDto(
     /** 创建时间戳（秒） */
     val createdAt: Long,
     /** 到期时间戳（秒），0 表示无到期时间 */
-    val expiredAt: Long
+    val expiredAt: Long,
 )

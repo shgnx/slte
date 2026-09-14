@@ -5,6 +5,8 @@ fun useAliyunMirror(): Boolean = System.getenv("SLTE_USE_MIRROR")?.toBoolean() ?
 
 pluginManagement {
     repositories {
+        // 注意：pluginManagement 块内无法解析脚本级函数（useAliyunMirror），只能内联同一表达式；
+        // dependencyResolutionManagement 块无此限制，复用函数
         if (System.getenv("SLTE_USE_MIRROR")?.toBoolean() != false) {
             maven { url = uri("https://maven.aliyun.com/repository/google") }
             maven { url = uri("https://maven.aliyun.com/repository/central") }
@@ -33,4 +35,3 @@ include(":app")
 include(":kernel-common")
 include(":kernel-core")
 include(":kernel-service")
-include(":kernel-hideapi")

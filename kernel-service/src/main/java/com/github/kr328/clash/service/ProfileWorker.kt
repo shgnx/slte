@@ -23,6 +23,9 @@ import kotlinx.coroutines.*
 import java.util.*
 import java.util.concurrent.TimeUnit
 
+// ponytail: 上游 CMA 的定时更新 worker，本应用无调度方（无 AlarmManager/JobScheduler 触发，
+// ACTION_PROFILE_REQUEST_UPDATE 无生产者），processing()/completed()/failed()/resultBuilder() 均无调用者。
+// 注意 e5972d4 曾为它做 drain/宽限修复：那是对死代码的加固。后续同类「修复」前请先确认可达性。
 class ProfileWorker : BaseService() {
     private val jobs = java.util.concurrent.ConcurrentLinkedQueue<Job>()
 

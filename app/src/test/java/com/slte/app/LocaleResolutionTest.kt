@@ -2,12 +2,14 @@ package com.slte.app
 
 import com.slte.app.ui.screen.settings.LanguageMode
 import com.slte.app.utils.resolveEffectiveLocale
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.util.Locale
 
+/**
+ * 有效语言解析测试：显式选择优先于系统语言，未支持语言回退英文。
+ */
 class LocaleResolutionTest {
-
     @Test
     fun `显式选择优先于系统语言`() {
         assertEquals(Locale.SIMPLIFIED_CHINESE, resolveEffectiveLocale(Locale.ENGLISH, Locale.SIMPLIFIED_CHINESE))

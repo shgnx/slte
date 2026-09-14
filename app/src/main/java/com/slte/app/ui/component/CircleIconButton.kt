@@ -28,7 +28,7 @@ fun CircleIconButton(
     description: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    showBackground: Boolean = true
+    showBackground: Boolean = true,
 ) {
     val hapticFeedback = LocalHapticFeedback.current
     IconButton(
@@ -36,29 +36,30 @@ fun CircleIconButton(
             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
             onClick()
         },
-        modifier = modifier
+        modifier = modifier,
     ) {
         if (showBackground) {
             Box(
-                modifier = Modifier
+                modifier =
+                Modifier
                     .size(Dimens.topBarActionBgSize)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = description,
-                    modifier = Modifier.size(Dimens.topBarActionIconSize),
-                    tint = SlteColors.current.iconBlue
+                    modifier = Modifier.size(Dimens.icon.lg),
+                    tint = SlteColors.current.accentInteractive,
                 )
             }
         } else {
             Icon(
                 imageVector = icon,
                 contentDescription = description,
-                modifier = Modifier.size(Dimens.topBarActionIconSize),
-                tint = MaterialTheme.colorScheme.onSurface
+                modifier = Modifier.size(Dimens.icon.lg),
+                tint = MaterialTheme.colorScheme.onSurface,
             )
         }
     }

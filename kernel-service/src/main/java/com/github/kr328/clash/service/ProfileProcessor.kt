@@ -179,7 +179,10 @@ object ProfileProcessor {
                 pending.deleteRecursively()
                 imported.deleteRecursively()
 
-                context.sendProfileChanged(uuid)
+                // 不广播 PROFILE_CHANGED：该广播的语义是"请加载这个配置"，而它刚被删掉。
+                // 若被删的恰好是当前激活项，ConfigurationModule 会因查不到记录抛 NPE →
+                // LoadException → 整个内核服务退出，表现为 VPN 无声断开（App 侧看到连接开关弹回）。
+                // 删除后由 App 决定新的激活项并广播（KernelConfig.ensureProfile 在激活项变化时会广播）。
             }
         }
     }

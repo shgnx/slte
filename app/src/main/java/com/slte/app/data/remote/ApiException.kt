@@ -13,5 +13,5 @@ import java.io.IOException
  */
 class ApiException(
     override val message: String,
-    @StringRes val stringResId: Int? = null
+    @StringRes val stringResId: Int? = null,
 ) : IOException(message)

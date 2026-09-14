@@ -1,7 +1,6 @@
 package com.slte.app.ui.component
 
 import android.graphics.Typeface
-import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
@@ -20,9 +19,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.sp
 import androidx.core.text.HtmlCompat
+import com.slte.app.ui.theme.SlteType
 import com.slte.app.ui.theme.TextSizes
 
-/** HTML 富文本组件：用 HtmlCompat 解析为 Spanned 再转 Compose AnnotatedString 渲染，避免 WebView 开销。
+/**
+ * HTML 富文本组件：用 HtmlCompat 解析为 Spanned 再转 Compose AnnotatedString 渲染，避免 WebView 开销。
  *
  * @param html 原始 HTML 字符串
  * @param modifier 额外布局修饰
@@ -30,26 +31,27 @@ import com.slte.app.ui.theme.TextSizes
 @Composable
 fun HtmlText(
     html: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val onSurface = MaterialTheme.colorScheme.onSurface
 
-    val annotatedString = remember(html, onSurface) {
-        spannedToAnnotatedString(html, onSurface)
-    }
+    val annotatedString =
+        remember(html, onSurface) {
+            spannedToAnnotatedString(html, onSurface)
+        }
 
     Text(
         text = annotatedString,
-        style = MaterialTheme.typography.bodyMedium,
+        style = SlteType.body,
         color = onSurface,
-        modifier = modifier
+        modifier = modifier,
     )
 }
 
 /** 将 HTML 解析为 Spanned 后转 AnnotatedString，遍历 span 时保留源文本换行结构。 */
 private fun spannedToAnnotatedString(
     html: String,
-    defaultColor: Color
+    defaultColor: Color,
 ): AnnotatedString {
     val spanned = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY)
     val source = spanned.toString()
@@ -57,7 +59,7 @@ private fun spannedToAnnotatedString(
     data class SpanInfo(
         val start: Int,
         val end: Int,
-        val style: SpanStyle
+        val style: SpanStyle,
     )
 
     val spans = mutableListOf<SpanInfo>()

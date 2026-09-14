@@ -1,10 +1,9 @@
 package com.slte.app.kernel
 
-import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.ProxySort
 import com.github.kr328.clash.core.model.TunnelState
-import com.slte.app.utils.Constants
 import com.slte.app.utils.AppLog
+import com.slte.app.utils.Constants
 
 /**
  * KernelProxy 分组选择扩展：节点切换、自动选择/故障转移、服务器行状态。
@@ -16,9 +15,11 @@ suspend fun KernelProxy.selectNode(name: String): Boolean = safe(false) {
     val clash = manager.clash() ?: return@safe false
     val group = selectorGroup() ?: return@safe false
 
-    val proxy = clash.queryProxyGroup(group, ProxySort.Default)
-        .proxies
-        .firstOrNull { it.name == name } ?: return@safe false
+    val proxy =
+        clash
+            .queryProxyGroup(group, ProxySort.Default)
+            .proxies
+            .firstOrNull { it.name == name } ?: return@safe false
 
     val result = clash.patchSelector(group, proxy.name)
     AppLog.d("SLTE-Kernel", "selectNode: group=$group proxy=${proxy.name} result=$result")
@@ -52,16 +53,18 @@ suspend fun KernelProxy.serverInfo(): KernelServerInfo? = safe(null) {
     val autoGroup = autoGroupName()
     val fallbackGroup = fallbackGroupName()
 
-    val selection = when (now) {
-        autoGroup -> Constants.SELECTION_AUTO
-        fallbackGroup -> Constants.SELECTION_FALLBACK
-        else -> Constants.SELECTION_MANUAL
-    }
-    val node = if (state.proxies.any { !it.isGroup && it.name == now }) {
-        now
-    } else {
-        clash.queryProxyGroup(now, ProxySort.Default).now.ifBlank { null }
-    }
+    val selection =
+        when (now) {
+            autoGroup -> SelectionType.AUTO
+            fallbackGroup -> SelectionType.FALLBACK
+            else -> SelectionType.MANUAL
+        }
+    val node =
+        if (state.proxies.any { !it.isGroup && it.name == now }) {
+            now
+        } else {
+            clash.queryProxyGroup(now, ProxySort.Default).now.ifBlank { null }
+        }
     AppLog.d("SLTE-Kernel", "serverInfo: selection=$selection node=$node")
     KernelServerInfo(selection, node)
 }
@@ -80,9 +83,10 @@ suspend fun KernelProxy.groupByTypeDelay(type: String): Int? = safe(null) {
 
     clash.healthCheck(group)
     val state = clash.queryProxyGroup(group, ProxySort.Delay)
-    val proxy = state.proxies.firstOrNull { it.name == state.now }
-        ?: state.proxies.firstOrNull { !it.isGroup }
-        ?: return@safe null
+    val proxy =
+        state.proxies.firstOrNull { it.name == state.now }
+            ?: state.proxies.firstOrNull { !it.isGroup }
+            ?: return@safe null
 
     normalizeDelay(proxy.delay)
 }
@@ -120,8 +124,7 @@ internal suspend fun KernelProxy.waitForGroups(): String? {
     return null
 }
 
-internal fun KernelProxy.normalizeDelay(delay: Int): Int =
-    if (delay <= 0 || delay >= 65535) 999 else delay
+internal fun KernelProxy.normalizeDelay(delay: Int): Int = if (delay <= 0 || delay >= Constants.DELAY_INVALID_MAX) Constants.DELAY_TIMEOUT else delay
 
 /** 主选择分组：优先按内核类型识别 Selector，其次 URLTest；无类型匹配时取首个非 GLOBAL 组 */
 internal suspend fun KernelProxy.selectorGroup(): String? {
@@ -140,7 +143,10 @@ internal suspend fun KernelProxy.selectorGroup(): String? {
 }
 
 /** 把主选择分组切换到指定类型的分组（自动选择/故障转移）；类型缺失时按常见命名兜底 */
-internal suspend fun KernelProxy.selectSpecialGroup(type: String, vararg nameKeywords: String): Boolean {
+internal suspend fun KernelProxy.selectSpecialGroup(
+    type: String,
+    vararg nameKeywords: String,
+): Boolean {
     val clash = manager.clash() ?: return false
     val selector = selectorGroup() ?: return false
     val target = queryGroupByTypeName(type) ?: nameMatch(*nameKeywords) ?: return false
@@ -162,18 +168,17 @@ internal suspend fun KernelProxy.patchGlobalIfGlobal(target: String) {
  * 自动选择分组：内核类型 URLTest 精确识别优先；
  * 名称关键词匹配仅作兜底（演进方向：订阅统一为标准分组类型后移除）。
  */
-internal suspend fun KernelProxy.autoGroupName(): String? =
-    queryGroupByTypeName("URLTest") ?: nameMatch("自动", "auto", "url")
+internal suspend fun KernelProxy.autoGroupName(): String? = queryGroupByTypeName("URLTest") ?: nameMatch("自动", "auto", "url")
 
 /**
  * 故障转移分组：内核类型 Fallback 精确识别优先；
  * 名称关键词匹配仅作兜底（演进方向：订阅统一为标准分组类型后移除）。
  */
-internal suspend fun KernelProxy.fallbackGroupName(): String? =
-    queryGroupByTypeName("Fallback") ?: nameMatch("故障", "fallback")
+internal suspend fun KernelProxy.fallbackGroupName(): String? = queryGroupByTypeName("Fallback") ?: nameMatch("故障", "fallback")
 
 internal suspend fun KernelProxy.nameMatch(vararg keywords: String): String? {
     val clash = manager.clash() ?: return null
-    return clash.queryProxyGroupNames(excludeNotSelectable = false)
+    return clash
+        .queryProxyGroupNames(excludeNotSelectable = false)
         .firstOrNull { group -> keywords.any { group.contains(it, ignoreCase = true) } }
 }

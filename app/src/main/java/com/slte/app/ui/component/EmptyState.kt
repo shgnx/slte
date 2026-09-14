@@ -7,20 +7,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import com.slte.app.ui.theme.TextSizes
+import com.slte.app.ui.theme.SlteType
 import com.slte.app.utils.Dimens
 import com.slte.app.utils.Stickers
 
 /**
- * 页面空状态组件：TGS 动画居中 + 标题 + 副文案 + 可选 CTA。
- * 动画循环播放本地 assets 中的 TGS 贴纸。
+ * 页面空状态组件：居中 TGS 动画 + 标题 + 副文案 + 可选 CTA。
  *
  * @param title 主标题（如 "暂无订单"）
  * @param description 副文案，可空
@@ -33,42 +32,41 @@ fun EmptyState(
     modifier: Modifier = Modifier,
     description: String? = null,
     actionText: String? = null,
-    onAction: (() -> Unit)? = null
+    onAction: (() -> Unit)? = null,
 ) {
-    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val haptic = LocalHapticFeedback.current
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         AnimatedSticker(
             assetPath = Stickers.EMPTY,
-            modifier = Modifier.size(Dimens.emptyStickerSize)
+            modifier = Modifier.size(Dimens.stateStickerSize),
         )
-        Spacer(modifier = Modifier.height(Dimens.spacingXl))
+        Spacer(modifier = Modifier.height(Dimens.gap.xl))
         Text(
             text = title,
-            fontSize = TextSizes.dashboardListLabel,
+            style = SlteType.body,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
         )
         if (description != null) {
-            Spacer(modifier = Modifier.height(Dimens.spacingSm))
+            Spacer(modifier = Modifier.height(Dimens.gap.sm))
             Text(
                 text = description,
-                fontSize = TextSizes.actionSubtitle,
+                style = SlteType.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
         }
         if (actionText != null && onAction != null) {
-            Spacer(modifier = Modifier.height(Dimens.spacingXl))
-            OutlinedButton(onClick = {
-                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                onAction()
-            }) {
-                Text(actionText)
-            }
+            Spacer(modifier = Modifier.height(Dimens.gap.xl))
+            SlteButton(
+                text = actionText,
+                onClick = onAction,
+                style = SlteButtonStyle.Neutral,
+            )
         }
     }
 }

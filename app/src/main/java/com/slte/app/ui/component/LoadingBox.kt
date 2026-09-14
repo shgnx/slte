@@ -25,8 +25,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.slte.app.R
 import com.slte.app.ui.theme.SlteShapes
+import com.slte.app.ui.theme.SlteType
 import com.slte.app.utils.Dimens
-import com.slte.app.ui.theme.TextSizes
 
 /**
  * 全局 Loading 组件。
@@ -35,34 +35,36 @@ import com.slte.app.ui.theme.TextSizes
  */
 @Composable
 fun LoadingBox(
+    modifier: Modifier = Modifier,
     message: String = stringResource(R.string.loading),
-    modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier.size(Dimens.loadingBoxSize),
         shape = SlteShapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+        colors =
+        CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
         ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = Dimens.loadingBoxElevation
-        )
+        elevation =
+        CardDefaults.cardElevation(
+            defaultElevation = Dimens.loadingBoxElevation,
+        ),
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Center,
             ) {
                 LottieLoadingIcon(modifier = Modifier.size(Dimens.loadingAnimSize))
                 Spacer(modifier = Modifier.height(Dimens.loadingTextGap))
                 Text(
                     text = message,
-                    fontSize = TextSizes.loadingMessage,
+                    style = SlteType.bodySmall,
                     fontWeight = FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -74,7 +76,7 @@ fun LoadingBox(
 fun LoadingOverlay(
     visible: Boolean,
     message: String = stringResource(R.string.loading),
-    onDismiss: (() -> Unit)? = null
+    onDismiss: (() -> Unit)? = null,
 ) {
     // 系统返回手势/返回键可取消全屏加载（需调用方传入 onDismiss）
     if (visible && onDismiss != null) {
@@ -83,17 +85,18 @@ fun LoadingOverlay(
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(initialAlpha = 0f),
-        exit = fadeOut(targetAlpha = 0f)
+        exit = fadeOut(targetAlpha = 0f),
     ) {
         Box(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.scrim.copy(alpha = Dimens.loadingScrimAlpha))
                 .clickable(
                     interactionSource = null,
-                    indication = null
+                    indication = null,
                 ) { onDismiss?.invoke() },
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             LoadingBox(message = message)
         }

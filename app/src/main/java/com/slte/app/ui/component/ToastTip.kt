@@ -4,7 +4,6 @@ import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 
 /**
  * 原生 Toast 轻提示（String 版本）。
@@ -14,7 +13,7 @@ import androidx.compose.ui.res.stringResource
 @Composable
 fun ToastTip(
     message: String?,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
     LaunchedEffect(message) {
@@ -31,7 +30,7 @@ fun ToastTip(
 @Composable
 fun ToastTip(
     messageRes: Int?,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
     LaunchedEffect(messageRes) {

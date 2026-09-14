@@ -44,7 +44,9 @@
 
     <!-- Plan card -->
     <string name="plan_status_expired">已過期</string>
-    <string name="plan_expire_days_label">%d 天後到期</string>
+    <plurals name="plan_expire_days_label">
+        <item quantity="other">%d 天後到期</item>
+    </plurals>
     <string name="plan_expire_date_label">%1$s 到期</string>
     <string name="plan_expired_today">今天到期</string>
     <string name="plan_no_expiry">不限時</string>
@@ -74,8 +76,12 @@
     <string name="dashboard_usage_title">流量用量</string>
     <string name="dashboard_usage_valid">有效</string>
     <string name="dashboard_expiry">有效期</string>
-    <string name="dashboard_days">%d 天</string>
+    <plurals name="dashboard_days">
+        <item quantity="other">%d 天</item>
+    </plurals>
     <string name="dashboard_proxy_rule">規則</string>
+    <string name="dashboard_proxy_direct">直連</string>
+    <string name="dashboard_proxy_script">腳本</string>
     <string name="dashboard_proxy_global">全域</string>
     <string name="proxy_rule_desc">依規則轉發流量</string>
     <string name="proxy_global_desc">所有流量走代理</string>
@@ -99,39 +105,43 @@
     <!-- Invite -->
     <string name="invite_title">邀請返利</string>
     <string name="currency_symbol">¥</string>
-    <string name="invite_stat_registered">已註冊用戶</string>
+    <string name="invite_stat_registered">註冊人數</string>
     <string name="invite_stat_commission_rate">佣金比例</string>
     <string name="invite_stat_total">累計佣金</string>
-    <string name="invite_stat_pending">確認中</string>
+    <string name="invite_stat_pending">待確認中</string>
     <string name="invite_stat_available">可提現</string>
     <string name="invite_code_title">邀請碼</string>
     <string name="invite_code_generate">產生邀請碼</string>
     <string name="invite_code_copy">複製</string>
     <string name="invite_code_copied">已複製</string>
     <string name="invite_code_empty">暫無邀請碼</string>
-    <string name="invite_transfer">劃轉</string>
-    <string name="invite_withdraw">提現</string>
-    <string name="invite_transfer_title">佣金轉餘額</string>
-    <string name="invite_transfer_amount_hint">轉帳金額（元）</string>
-    <string name="invite_transfer_confirm">確認轉帳</string>
-    <string name="invite_transfer_available">可轉餘額</string>
-    <string name="invite_transfer_all">全部</string>
-    <string name="invite_withdraw_title">提現</string>
+    <string name="invite_transfer">佣金劃轉</string>
+    <string name="invite_withdraw">申請提現</string>
+    <string name="invite_transfer_title">佣金劃轉</string>
+    <string name="invite_transfer_amount_hint">請輸入需要劃轉到餘額的金額</string>
+    <string name="invite_transfer_confirm">確認劃轉</string>
+    <string name="invite_transfer_available">目前推廣佣金餘額</string>
+    <string name="invite_transfer_subtitle">劃轉後的餘額僅用於 %1$s 消費使用</string>
+    <string name="invite_withdraw_method_hint">請選擇提現方式</string>
+    <string name="invite_withdraw_account_label">提現帳號</string>
+    <string name="invite_withdraw_methods_loading">載入中…</string>
+    <string name="invite_withdraw_methods_failed">提現方式載入失敗，點擊重試</string>
+    <string name="invite_withdraw_title">申請提現</string>
+    <string name="invite_withdraw_subtitle">請確認提現帳號無誤，佣金將於 72 小時內到帳</string>
+    <string name="server_special_node">特殊節點</string>
     <string name="invite_withdraw_method">提現方式</string>
-    <string name="invite_withdraw_account_hint">提現帳號</string>
+    <string name="invite_withdraw_account_hint">請輸入提現帳號</string>
     <string name="invite_withdraw_confirm">確認提現</string>
-    <string name="invite_withdraw_available">可提現</string>
-    <string-array name="invite_withdraw_methods">
-        <item>支付寶</item>
-        <item>USDT</item>
-    </string-array>
+    <string name="invite_withdraw_methods_empty">暫無可用提現方式</string>
     <string name="invite_records_title">佣金記錄</string>
     <string name="invite_records_empty">暫無記錄</string>
     <string name="invite_record_amount">+¥%s</string>
     <string name="invite_record_amount_label">訂單金額 ¥%s</string>
     <string name="invite_record_order">訂單 %s</string>
     <string name="invite_code_pv">PV %d</string>
-    <string name="invite_users">%d 人</string>
+    <plurals name="invite_users">
+        <item quantity="other">%d 人</item>
+    </plurals>
     <string name="invite_rate">%d%%</string>
     <string name="invite_success_transfer">轉帳成功</string>
     <string name="invite_success_withdraw">提現已提交</string>
@@ -145,6 +155,7 @@
     <string name="notice_empty">暫無公告</string>
     <string name="notice_error">載入失敗</string>
     <string name="notice_retry">重試</string>
+    <string name="notice_refresh_failed">刷新失敗，請稍後再試</string>
 
     <!-- Profile -->
     <string name="profile_title">個人中心</string>
@@ -168,8 +179,9 @@
     <string name="about_log_share_failed">無法分享日誌</string>
 
     <!-- Update (检查更新) -->
+    <string name="update_force_title">需更新後可用</string>
     <string name="update_title">發現新版本</string>
-    <string name="update_force_title">需更新才能繼續使用</string>
+    <string name="update_version_label">更新版本 %1$s</string>
     <string name="update_now">立即更新</string>
     <string name="update_later">稍後</string>
     <string name="update_changelog_title_default">更新日誌</string>
@@ -179,6 +191,7 @@
 
     <string name="profile_logout">登出</string>
     <string name="logout_confirm_message">確定登出目前帳號？</string>
+    <string name="session_expired_relogin">登入已過期，請重新登入</string>
 
     <!-- Settings (其他设置) -->
     <string name="settings_title">其他設定</string>
@@ -234,7 +247,6 @@
     <string name="purchase_coupon_discount">優惠券抵扣</string>
     <string name="purchase_coupon_verify_first">請先驗證優惠券</string>
     <string name="error_coupon_invalid">優惠券無效或已過期</string>
-    <string name="dialog_confirm">確定</string>
     <string name="purchase_confirm_order">確認訂單</string>
     <string name="purchase_warning_title">警告</string>
     <string name="purchase_warning_message">更換方案將覆蓋目前訂閱。</string>
@@ -243,7 +255,7 @@
     <string name="purchase_order_info">訂單資訊</string>
     <string name="purchase_product">套餐</string>
     <string name="purchase_product_price">套餐價格</string>
-    <string name="purchase_balance">餘額抵扣</string>
+    <string name="purchase_balance">餘額</string>
     <string name="purchase_surplus">舊套餐折抵</string>
     <string name="purchase_refund">返還餘額</string>
     <string name="purchase_handling">手續費</string>
@@ -276,6 +288,7 @@
     <string name="period_reset">流量重置</string>
 
     <!-- API error messages -->
+    <string name="api_error_bad_response">伺服器回應格式異常</string>
     <string name="api_error_empty_data">伺服器回傳資料為空</string>
     <string name="api_error_register_config">取得註冊設定失敗</string>
     <string name="api_error_user_info">取得用戶資訊失敗</string>
@@ -294,7 +307,6 @@
     <!-- Language（语言选项标签使用各语言自身名称，不翻译，便于后续新增语言） -->
     <string name="settings_language">語言</string>
     <string name="language_follow_system">跟隨系統</string>
-    <string name="language_follow_system_desc">根據系統語言自動切換</string>
     <string name="language_simplified">简体中文</string>
     <string name="language_traditional">繁體中文</string>
     <string name="language_english">English</string>

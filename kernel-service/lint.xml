@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- vendored ClashMeta 代码：通知权限已在 app 清单声明并运行时申请（MainScreen），
+         内核服务进程的通知调用不重复做运行时检查；多语言缺翻译属上游文案，随上游同步 -->
+    <issue id="MissingPermission" severity="ignore" />
+    <issue id="MissingTranslation" severity="ignore" />
+</lint>

@@ -17,25 +17,23 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
+import androidx.compose.ui.text.style.TextOverflow
 import com.slte.app.R
-import com.slte.app.ui.component.formatCurrency
 import com.slte.app.domain.model.InviteStat
+import com.slte.app.ui.component.AnimatedSticker
+import com.slte.app.ui.component.formatCurrency
 import com.slte.app.ui.theme.SlteColors
 import com.slte.app.ui.theme.SlteShapes
+import com.slte.app.ui.theme.SlteType
 import com.slte.app.utils.Dimens
-import com.slte.app.utils.FormatUtils
-import com.slte.app.ui.theme.TextSizes
+import com.slte.app.utils.Stickers
 
 /**
  * 佣金概览卡片：
@@ -45,76 +43,77 @@ import com.slte.app.ui.theme.TextSizes
  */
 @Composable
 fun InviteStatCard(stat: InviteStat) {
-    val composition by rememberLottieComposition(
-        LottieCompositionSpec.RawRes(R.raw.invite_sticker)
-    )
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = SlteShapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.cardElevation)
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.cardElevation),
     ) {
         Column(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Dimens.inviteStatCardPaddingH, vertical = Dimens.inviteStatCardPaddingV),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = Dimens.gap.lg, vertical = Dimens.inviteStatCardPaddingV),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            LottieAnimation(
-                composition = composition,
-                iterations = LottieConstants.IterateForever,
-                modifier = Modifier.size(Dimens.inviteStickerSize)
+            AnimatedSticker(
+                assetPath = Stickers.INVITE,
+                modifier = Modifier.size(Dimens.inviteStickerSize),
             )
 
-            Spacer(modifier = Modifier.height(Dimens.spacingSm))
+            Spacer(modifier = Modifier.height(Dimens.gap.sm))
 
             Text(
                 text = formatCurrency(stat.availableBalance),
-                fontSize = TextSizes.inviteBalanceLarge,
+                style = SlteType.display,
                 fontWeight = FontWeight.Bold,
-                color = SlteColors.current.iconBlue
+                color = SlteColors.current.accentInteractive,
             )
-            Spacer(modifier = Modifier.height(Dimens.spacingXs))
+            Spacer(modifier = Modifier.height(Dimens.gap.xs))
             Text(
                 text = stringResource(R.string.invite_stat_available),
-                fontSize = TextSizes.inviteStatLabel,
+                style = SlteType.caption,
                 fontWeight = FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            Spacer(modifier = Modifier.height(Dimens.inviteStatGridSpacing))
+            Spacer(modifier = Modifier.height(Dimens.gap.lg))
 
             HorizontalDivider(
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = com.slte.app.utils.Dimens.dividerAlpha),
-                thickness = Dimens.dividerThickness
+                thickness = Dimens.dividerThickness,
             )
 
-            Spacer(modifier = Modifier.height(Dimens.inviteStatGridSpacing))
+            Spacer(modifier = Modifier.height(Dimens.gap.lg))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 StatColumn(
                     label = stringResource(R.string.invite_stat_registered),
-                    value = stringResource(R.string.invite_users, stat.registeredUsers),
-                    modifier = Modifier.weight(1f)
+                    value =
+                    pluralStringResource(
+                        R.plurals.invite_users,
+                        stat.registeredUsers,
+                        stat.registeredUsers,
+                    ),
+                    modifier = Modifier.weight(1f),
                 )
                 StatColumn(
                     label = stringResource(R.string.invite_stat_commission_rate),
                     value = stringResource(R.string.invite_rate, stat.commissionRate),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
                 StatColumn(
                     label = stringResource(R.string.invite_stat_total),
                     value = formatCurrency(stat.totalCommission),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
                 StatColumn(
                     label = stringResource(R.string.invite_stat_pending),
                     value = formatCurrency(stat.pendingCommission),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
@@ -129,28 +128,31 @@ fun InviteStatCard(stat: InviteStat) {
 private fun StatColumn(
     label: String,
     value: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = value,
-            fontSize = TextSizes.inviteStatValue,
+            style = SlteType.body,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
-        Spacer(modifier = Modifier.height(Dimens.spacingXs))
+        Spacer(modifier = Modifier.height(Dimens.gap.xs))
         Text(
             text = label,
-            fontSize = TextSizes.inviteStatLabel,
+            style = SlteType.caption,
             fontWeight = FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
-
 
 @Composable
 fun InviteActionButton(
@@ -158,7 +160,7 @@ fun InviteActionButton(
     text: String,
     tint: Color,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Card(
@@ -166,19 +168,19 @@ fun InviteActionButton(
             haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
             onClick()
         },
-        modifier = modifier.height(Dimens.inviteActionButtonHeight),
+        modifier = modifier.height(Dimens.size.button),
         shape = SlteShapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.cardElevation)
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.cardElevation),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().fillMaxHeight(),
             horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(Dimens.dashboardActionIconSize), tint = tint)
-            Spacer(modifier = Modifier.width(Dimens.dashboardActionIconGap))
-            Text(text, fontWeight = FontWeight.SemiBold, fontSize = TextSizes.dashboardActionBtn, color = tint)
+            Icon(icon, contentDescription = null, modifier = Modifier.size(Dimens.icon.md), tint = tint)
+            Spacer(modifier = Modifier.width(Dimens.gap.sm))
+            Text(text, fontWeight = FontWeight.SemiBold, style = SlteType.body, color = tint)
         }
     }
 }

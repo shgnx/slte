@@ -29,6 +29,5 @@ data class PlanInfo(
     val availablePeriods: List<String>
         get() = periodPrices.map { it.period }
 
-    fun priceForPeriod(period: String): String? =
-        periodPrices.find { it.period == period }?.price
+    fun priceForPeriod(period: String): String? = periodPrices.find { it.period == period }?.price
 }

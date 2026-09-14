@@ -1,13 +1,11 @@
 package com.slte.app.ui.screen.invite
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -21,9 +19,9 @@ import com.slte.app.R
 import com.slte.app.domain.model.CommissionRecord
 import com.slte.app.ui.theme.SlteColors
 import com.slte.app.ui.theme.SlteShapes
+import com.slte.app.ui.theme.SlteType
 import com.slte.app.utils.Dimens
 import com.slte.app.utils.FormatUtils
-import com.slte.app.ui.theme.TextSizes
 
 @Composable
 fun CommissionRecordsCard(records: List<CommissionRecord>) {
@@ -31,29 +29,30 @@ fun CommissionRecordsCard(records: List<CommissionRecord>) {
         modifier = Modifier.fillMaxWidth(),
         shape = SlteShapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.cardElevation)
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.cardElevation),
     ) {
         Column(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Dimens.inviteCodeCardPaddingH, vertical = Dimens.inviteCodeCardPaddingV)
+                .padding(horizontal = Dimens.gap.lg, vertical = Dimens.gap.lg),
         ) {
             Text(
                 text = stringResource(R.string.invite_records_title),
                 fontWeight = FontWeight.SemiBold,
-                fontSize = TextSizes.dashboardUsageTitle,
-                color = MaterialTheme.colorScheme.onSurface
+                style = SlteType.body,
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             if (records.isEmpty()) {
                 Text(
                     text = stringResource(R.string.invite_records_empty),
-                    fontSize = TextSizes.inviteEmpty,
+                    style = SlteType.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = Dimens.spacingMd)
+                    modifier = Modifier.padding(vertical = Dimens.gap.md),
                 )
             } else {
-                Spacer(modifier = Modifier.height(Dimens.spacingSm))
+                Spacer(modifier = Modifier.height(Dimens.gap.sm))
                 records.forEach { record ->
                     CommissionRecordItem(record = record)
                 }
@@ -65,30 +64,31 @@ fun CommissionRecordsCard(records: List<CommissionRecord>) {
 @Composable
 private fun CommissionRecordItem(record: CommissionRecord) {
     Row(
-        modifier = Modifier
+        modifier =
+        Modifier
             .fillMaxWidth()
-            .height(Dimens.inviteRecordItemHeight),
-        verticalAlignment = Alignment.CenterVertically
+            .height(Dimens.size.row),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(R.string.invite_record_order, record.tradeNo),
                 fontWeight = FontWeight.Medium,
-                fontSize = TextSizes.inviteRecordOrder,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = SlteType.label,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(modifier = Modifier.height(Dimens.spacingXs))
+            Spacer(modifier = Modifier.height(Dimens.gap.xs))
             Text(
                 text = stringResource(R.string.invite_record_amount_label, FormatUtils.balance(record.orderAmount)),
-                fontSize = TextSizes.inviteRecordOrder,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = SlteType.label,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Text(
             text = stringResource(R.string.invite_record_amount, FormatUtils.balance(record.getAmount)),
             fontWeight = FontWeight.SemiBold,
-            fontSize = TextSizes.inviteRecordAmount,
-            color = SlteColors.current.iconBlue
+            style = SlteType.body,
+            color = SlteColors.current.accentInteractive,
         )
     }
 }

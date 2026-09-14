@@ -13,11 +13,11 @@ import com.slte.app.R
 @Composable
 fun LottieLoadingIcon(modifier: Modifier = Modifier) {
     val composition by rememberLottieComposition(
-        LottieCompositionSpec.RawRes(R.raw.loading)
+        LottieCompositionSpec.RawRes(R.raw.loading),
     )
     LottieAnimation(
         composition = composition,
         iterations = LottieConstants.IterateForever,
-        modifier = modifier
+        modifier = modifier,
     )
 }

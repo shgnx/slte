@@ -2,8 +2,8 @@ package com.slte.app.ui.screen.about
 
 import android.content.ClipData
 import android.content.Intent
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,10 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,25 +39,24 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slte.app.BuildConfig
 import com.slte.app.R
 import com.slte.app.ui.component.AnimatedSticker
-import com.slte.app.ui.component.SlteScaffold
 import com.slte.app.ui.component.LottieLoadingIcon
+import com.slte.app.ui.component.SlteRowCard
+import com.slte.app.ui.component.SlteScaffold
+import com.slte.app.ui.theme.SlteIcons
 import com.slte.app.ui.theme.SlteShapes
-import com.slte.app.ui.theme.TextSizes
-import com.slte.app.utils.Dimens
+import com.slte.app.ui.theme.SlteType
 import com.slte.app.utils.AppLog
 import com.slte.app.utils.Constants
+import com.slte.app.utils.Dimens
 import com.slte.app.utils.Stickers
 
 /**
- * 关于软件页面（二级页面）。
- *
- * 软件介绍 + 版本信息（应用版本/内核版本）+ 检查更新（底部弹窗）+ 日志导出。
- * 检查更新：拉取远程配置并弹出更新弹窗。
+ * 关于软件页面（二级页面）：软件/内核版本信息、检查更新（底部弹窗）、日志导出。
  */
 @Composable
 fun AboutScreen(
     onBack: () -> Unit,
-    viewModel: UpdateViewModel = hiltViewModel(key = "update")
+    viewModel: UpdateViewModel = hiltViewModel(key = "update"),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val kernelVersion by viewModel.kernelVersion.collectAsStateWithLifecycle()
@@ -69,48 +65,53 @@ fun AboutScreen(
 
     SlteScaffold(
         title = stringResource(R.string.about_title),
-        onBack = onBack
+        onBack = onBack,
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = Dimens.dashboardScreenPaddingH),
             verticalArrangement = Arrangement.spacedBy(Dimens.dashboardCardSpacing),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = Dimens.dashboardScreenPaddingV)
+            contentPadding =
+            androidx.compose.foundation.layout
+                .PaddingValues(vertical = Dimens.dashboardScreenPaddingV),
         ) {
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = SlteShapes.large,
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                    colors =
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = Dimens.cardElevation)
+                    elevation = CardDefaults.cardElevation(defaultElevation = Dimens.cardElevation),
                 ) {
                     Column(
-                        modifier = Modifier
+                        modifier =
+                        Modifier
                             .fillMaxWidth()
-                            .padding(Dimens.spacingXl),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .padding(Dimens.gap.xl),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         AnimatedSticker(
                             assetPath = Stickers.LOGIN,
-                            modifier = Modifier.size(Dimens.logoSize)
+                            modifier = Modifier.size(Dimens.logoSize),
                         )
-                        Spacer(modifier = Modifier.height(Dimens.spacingMd))
+                        Spacer(modifier = Modifier.height(Dimens.gap.md))
                         Text(
                             text = stringResource(R.string.app_name),
-                            fontSize = TextSizes.planName,
+                            style = SlteType.title,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
-                        Spacer(modifier = Modifier.height(Dimens.spacingSm))
+                        Spacer(modifier = Modifier.height(Dimens.gap.sm))
                         Text(
                             text = stringResource(R.string.about_app_desc),
-                            fontSize = TextSizes.inviteSheetDesc,
+                            style = SlteType.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
                         )
                     }
                 }
@@ -120,58 +121,60 @@ fun AboutScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = SlteShapes.large,
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                    colors =
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = Dimens.cardElevation)
+                    elevation = CardDefaults.cardElevation(defaultElevation = Dimens.cardElevation),
                 ) {
                     Column {
                         AboutRowContent(
-                            icon = Icons.Outlined.Info,
+                            icon = SlteIcons.About,
                             title = stringResource(R.string.about_app_version),
-                            value = BuildConfig.VERSION_NAME
+                            value = BuildConfig.VERSION_NAME,
                         )
                         HorizontalDivider(
-                            modifier = Modifier.padding(start = Dimens.actionIconSize + Dimens.spacingMd * 2 + Dimens.cardContentPadding),
+                            modifier = Modifier.padding(start = Dimens.icon.lg + Dimens.gap.md * 2 + Dimens.gap.lg),
                             thickness = Dimens.dividerThickness,
-                            color = MaterialTheme.colorScheme.surfaceVariant
+                            color = MaterialTheme.colorScheme.surfaceVariant,
                         )
                         AboutRowContent(
-                            icon = Icons.Outlined.Settings,
+                            icon = SlteIcons.Settings,
                             title = stringResource(R.string.about_kernel_version),
-                            value = kernelVersion ?: Constants.PLACEHOLDER_DASH
+                            value = kernelVersion ?: Constants.PLACEHOLDER_DASH,
                         )
                         HorizontalDivider(
-                            modifier = Modifier.padding(start = Dimens.actionIconSize + Dimens.spacingMd * 2 + Dimens.cardContentPadding),
+                            modifier = Modifier.padding(start = Dimens.icon.lg + Dimens.gap.md * 2 + Dimens.gap.lg),
                             thickness = Dimens.dividerThickness,
-                            color = MaterialTheme.colorScheme.surfaceVariant
+                            color = MaterialTheme.colorScheme.surfaceVariant,
                         )
                         Row(
-                            modifier = Modifier
+                            modifier =
+                            Modifier
                                 .fillMaxWidth()
-                                .height(Dimens.actionRowHeight)
+                                .height(Dimens.size.row)
                                 .clickable {
                                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                                     viewModel.checkUpdate(manual = true)
                                 },
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                            horizontalArrangement = Arrangement.Center,
                         ) {
                             if (state is UpdateUiState.Checking) {
-                                LottieLoadingIcon(modifier = Modifier.size(Dimens.topBarActionIconSize))
+                                LottieLoadingIcon(modifier = Modifier.size(Dimens.icon.lg))
                             } else {
                                 Text(
                                     text = stringResource(R.string.about_check_update),
-                                    fontSize = TextSizes.actionTitle,
+                                    style = SlteType.title,
                                     fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = MaterialTheme.colorScheme.primary,
                                 )
-                                Spacer(modifier = Modifier.width(Dimens.spacingXs))
+                                Spacer(modifier = Modifier.width(Dimens.gap.xs))
                                 Icon(
-                                    imageVector = Icons.Outlined.ChevronRight,
+                                    imageVector = SlteIcons.ChevronRight,
                                     contentDescription = null,
-                                    modifier = Modifier.size(Dimens.dashboardChevronSize),
-                                    tint = MaterialTheme.colorScheme.primary
+                                    modifier = Modifier.size(Dimens.icon.md),
+                                    tint = MaterialTheme.colorScheme.primary,
                                 )
                             }
                         }
@@ -181,60 +184,68 @@ fun AboutScreen(
 
             item {
                 AboutRowCard(
-                    icon = Icons.Outlined.Description,
+                    icon = SlteIcons.ExportLog,
                     title = stringResource(R.string.about_log_export),
                     onClick = {
                         val file = AppLog.export(context)
                         if (file == null) {
-                            android.widget.Toast.makeText(
-                                context,
-                                context.getString(R.string.about_log_export_failed),
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
+                            android.widget.Toast
+                                .makeText(
+                                    context,
+                                    context.getString(R.string.about_log_export_failed),
+                                    android.widget.Toast.LENGTH_SHORT,
+                                ).show()
                             return@AboutRowCard
                         }
-                        android.widget.Toast.makeText(
-                            context,
-                            context.getString(R.string.about_log_exported),
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                        try {
-                            val uri = FileProvider.getUriForFile(
+                        android.widget.Toast
+                            .makeText(
                                 context,
-                                "${context.packageName}.fileprovider",
-                                file
-                            )
-                            val send = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_STREAM, uri)
-                                clipData = ClipData.newRawUri(null, uri)
-                                putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.about_log_export))
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
+                                context.getString(R.string.about_log_exported),
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
+                        try {
+                            val uri =
+                                FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.fileprovider",
+                                    file,
+                                )
+                            val send =
+                                Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    clipData = ClipData.newRawUri(null, uri)
+                                    putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.about_log_export))
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
                             context.startActivity(
-                                Intent.createChooser(send, context.getString(R.string.about_log_export_share))
+                                Intent.createChooser(send, context.getString(R.string.about_log_export_share)),
                             )
                         } catch (e: Exception) {
-                            android.widget.Toast.makeText(
-                                context,
-                                context.getString(R.string.about_log_share_failed),
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
+                            android.widget.Toast
+                                .makeText(
+                                    context,
+                                    context.getString(R.string.about_log_share_failed),
+                                    android.widget.Toast.LENGTH_SHORT,
+                                ).show()
                         }
-                    }
+                    },
                 )
             }
         }
     }
 
     LaunchedEffect(state) {
-        val res = when (state) {
-            is UpdateUiState.Latest -> R.string.about_latest
-            is UpdateUiState.Error -> R.string.about_update_failed
-            else -> null
-        }
+        val res =
+            when (state) {
+                is UpdateUiState.Latest -> R.string.about_latest
+                is UpdateUiState.Error -> R.string.about_update_failed
+                else -> null
+            }
         if (res != null) {
-            android.widget.Toast.makeText(context, context.getString(res), android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast
+                .makeText(context, context.getString(res), android.widget.Toast.LENGTH_SHORT)
+                .show()
             viewModel.consumeTip()
         }
     }
@@ -247,24 +258,15 @@ private fun AboutRowCard(
     title: String,
     value: String? = null,
     subtitle: String? = null,
-    onClick: (() -> Unit)? = null
-) {
-    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-    Card(
-        onClick = {
-            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-            onClick?.invoke()
-        },
-        modifier = Modifier.fillMaxWidth(),
-        shape = SlteShapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.cardElevation)
-    ) {
-        AboutRowContent(icon = icon, title = title, value = value, subtitle = subtitle, onClick = onClick)
-    }
-}
+    onClick: (() -> Unit)? = null,
+) = SlteRowCard(
+    icon = icon,
+    title = title,
+    value = value,
+    subtitle = subtitle,
+    chevron = onClick != null,
+    onClick = onClick,
+)
 
 /** 关于页单行内容（无卡片外壳，供版本信息卡内嵌两行使用） */
 @Composable
@@ -273,58 +275,59 @@ private fun AboutRowContent(
     title: String,
     value: String? = null,
     subtitle: String? = null,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
 ) {
     Row(
-        modifier = Modifier
+        modifier =
+        Modifier
             .fillMaxWidth()
-            .height(if (subtitle != null) Dimens.inviteRecordItemHeight else Dimens.actionRowHeight)
-            .padding(horizontal = Dimens.cardContentPadding),
-        verticalAlignment = Alignment.CenterVertically
+            .height(Dimens.size.row)
+            .padding(horizontal = Dimens.gap.lg),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            modifier = Modifier.size(Dimens.actionIconSize),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
+            modifier = Modifier.size(Dimens.icon.lg),
+            // 关于页信息行＝导航/展示场景：灰色图标
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(modifier = Modifier.width(Dimens.spacingMd))
+        Spacer(modifier = Modifier.width(Dimens.gap.md))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                fontSize = TextSizes.actionTitle,
+                style = SlteType.title,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
             if (subtitle != null) {
-                Spacer(modifier = Modifier.height(Dimens.spacingXs))
+                Spacer(modifier = Modifier.height(Dimens.gap.xs))
                 Text(
                     text = subtitle,
-                    fontSize = TextSizes.inviteSheetDesc,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = SlteType.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
         if (value != null) {
             Text(
                 text = value,
-                fontSize = TextSizes.actionTitle,
+                style = SlteType.title,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.End,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
         }
         if (onClick != null) {
             Icon(
-                imageVector = Icons.Outlined.ChevronRight,
+                imageVector = SlteIcons.ChevronRight,
                 contentDescription = null,
-                modifier = Modifier.size(Dimens.dashboardChevronSize),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                modifier = Modifier.size(Dimens.icon.md),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
 }
-

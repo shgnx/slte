@@ -6,9 +6,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** 错误处理语义约定见 RepositoryUtils 注释；CancellationException 必须重抛，否则协程取消失效 */
+/**
+ * 错误处理语义约定见 RepositoryUtils 注释；CancellationException 必须重抛，否则协程取消失效。
+ */
 class RunApiTest {
-
     @Test
     fun `成功返回 success`() = runBlocking {
         val result = runApi { 42 }

@@ -1,0 +1,10 @@
+# 预编译内核二进制摘要（sha256sum 兼容格式：<摘要>  <文件名>）
+#
+# libclash.so 是随包分发、权限最高的预编译产物（VPN/TUN 全部经过它），
+# 且由人工交叉编译后放回本目录（见 VERSION.md），因此必须记录摘要：
+# 构建期由 :kernel-core:verifyNativeLibraries 校验，摘要不符即失败。
+#
+# 重新生成（仅在按 VERSION.md 升级内核、确认真实重建后执行）：
+#   shasum -a 256 libclash.so   # 或 sha256sum libclash.so
+# 并把新摘要写回本文件，同时在 VERSION.md 记录本次升级。
+160d151ffa56c18cc9a36dd5f66acd8d18a63ce4c4b6e36c3e7b9f66d81a00bd  libclash.so

@@ -4,8 +4,10 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/**
+ * 故障切换策略纯逻辑测试：幂等方法重放、故障状态码判定与 JSON 劫持识别。
+ */
 class FailoverPolicyTest {
-
     @Test
     fun `仅幂等方法允许重放`() {
         assertTrue(FailoverPolicy.isRetryableMethod("GET"))
@@ -31,7 +33,6 @@ class FailoverPolicyTest {
 
     @Test
     fun `JSON 声明与内容不匹配识别劫持页`() {
-        // 正常 JSON：声明与内容一致，不算故障
         assertFalse(FailoverPolicy.isJsonMismatch("application/json", '{'.code))
         assertFalse(FailoverPolicy.isJsonMismatch("application/json; charset=utf-8", '['.code))
         // 劫持页：声明 JSON 但返回 HTML

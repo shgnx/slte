@@ -9,6 +9,8 @@ import com.slte.app.domain.model.SessionState
 import com.slte.app.domain.model.SubscribeInfo
 import com.slte.app.domain.model.User
 import com.slte.app.utils.FormatUtils
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,8 +18,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * 订阅/用户/公告数据仓库：会话数据获取 + 缓存（30s TTL + 磁盘兜底）。
@@ -25,15 +25,35 @@ import javax.inject.Singleton
  * 会话状态不归本类所有（见 [SessionManager]）；登出事件触发缓存清理。
  */
 @Singleton
-class SubscribeRepository @Inject constructor(
+class SubscribeRepository
+@Inject
+constructor(
     private val authApi: AuthApi,
     private val sessionStore: SessionStore,
     private val sessionManager: SessionManager,
 ) {
+    /**
+     * 内存缓存字段。
+     *
+     * 读路径（TTL 快速返回）在锁外，写路径在 Mutex 内，故字段必须 @Volatile：否则写侧
+     * 不保证对拦截器线程可见（本类在 Main.immediate 的登出协程中执行 invalidateCache），
+     * 且 Long 在 32 位设备上存在撕裂读风险，TTL 语义不可靠。
+     *
+     * 四个字段并非成组原子更新（invalidateCache 逐个清零），并发窗口内可能读到刚被清掉的
+     * 缓存，但 30s TTL 内即失效、无正确性影响，故不引入额外锁。
+     */
+    @Volatile
     private var cachedSubscribeInfo: SubscribeInfo? = null
+
+    @Volatile
     private var subscribeInfoTimestamp: Long = 0L
+
+    @Volatile
     private var cachedUserInfo: User? = null
+
+    @Volatile
     private var userInfoTimestamp: Long = 0L
+
     private companion object {
         const val CACHE_TTL_MS = 30_000L
     }
@@ -63,23 +83,31 @@ class SubscribeRepository @Inject constructor(
             if (!force && recheckCached != null && System.currentTimeMillis() - subscribeInfoTimestamp < CACHE_TTL_MS) {
                 return@withLock Result.success(recheckCached)
             }
-            val result = runApi {
-                val session = sessionManager.sessionState.value as? SessionState.LoggedIn
-                    ?: error("会话已失效")
-                val info = authApi.fetchSubscribeInfo().toDomainSubscribeInfo()
-                val current = sessionManager.sessionState.value as? SessionState.LoggedIn
-                    ?: error("会话已失效")
-                check(current.user.authData == session.user.authData) { "会话已切换" }
-                cachedSubscribeInfo = info
-                subscribeInfoTimestamp = System.currentTimeMillis()
-                sessionStore.saveSubscribeInfo(info)
-                info
-            }
-            if (result.isSuccess) result
-            // 手动强制更新失败时不静默回退，让 UI 明确提示失败；
+            val result =
+                runApi {
+                    val session =
+                        sessionManager.sessionState.value as? SessionState.LoggedIn
+                            ?: error("会话已失效")
+                    val info = authApi.fetchSubscribeInfo().toDomainSubscribeInfo()
+                    val current =
+                        sessionManager.sessionState.value as? SessionState.LoggedIn
+                            ?: error("会话已失效")
+                    check(current.user.authData == session.user.authData) { "会话已切换" }
+                    cachedSubscribeInfo = info
+                    subscribeInfoTimestamp = System.currentTimeMillis()
+                    sessionStore.saveSubscribeInfo(info)
+                    info.subscribeUrl?.takeIf { it.isNotBlank() }?.let { sessionStore.saveSubscribeUrl(it) }
+                    info
+                }
+            if (result.isSuccess) {
+                result
+            } // 手动强制刷新失败时直接返回失败，让 UI 明确提示；
             // 自动刷新失败时回退磁盘缓存，保证离线可见
-            else if (force) result
-            else sessionStore.getSubscribeInfo()?.let { Result.success(it) } ?: result
+            else if (force) {
+                result
+            } else {
+                sessionStore.getSubscribeInfo()?.let { Result.success(it) } ?: result
+            }
         }
     }
 
@@ -104,27 +132,34 @@ class SubscribeRepository @Inject constructor(
             if (!force && recheckCached != null && System.currentTimeMillis() - userInfoTimestamp < CACHE_TTL_MS) {
                 return@withLock Result.success(recheckCached)
             }
-            val result = runApi {
-                val session = sessionManager.sessionState.value as? SessionState.LoggedIn
-                    ?: error("会话已失效")
-                val info = authApi.fetchUserInfo()
-                val current = sessionManager.sessionState.value as? SessionState.LoggedIn
-                    ?: error("会话已失效")
-                check(current.user.authData == session.user.authData) { "会话已切换" }
-                val user = session.user.copy(
-                    email = info.email,
-                    balance = FormatUtils.balance(info.balance),
-                    remindExpire = info.remindExpire,
-                    remindTraffic = info.remindTraffic
-                )
-                cachedUserInfo = user
-                userInfoTimestamp = System.currentTimeMillis()
-                sessionStore.saveUserInfo(user)
-                sessionManager.updateUser(user)
-                user
+            val result =
+                runApi {
+                    val session =
+                        sessionManager.sessionState.value as? SessionState.LoggedIn
+                            ?: error("会话已失效")
+                    val info = authApi.fetchUserInfo()
+                    val current =
+                        sessionManager.sessionState.value as? SessionState.LoggedIn
+                            ?: error("会话已失效")
+                    check(current.user.authData == session.user.authData) { "会话已切换" }
+                    val user =
+                        session.user.copy(
+                            email = info.email,
+                            balance = FormatUtils.balance(info.balance),
+                            remindExpire = info.remindExpire,
+                            remindTraffic = info.remindTraffic,
+                        )
+                    cachedUserInfo = user
+                    userInfoTimestamp = System.currentTimeMillis()
+                    sessionStore.saveUserInfo(user)
+                    sessionManager.updateUser(user)
+                    user
+                }
+            if (result.isSuccess || force) {
+                result
+            } else {
+                sessionStore.getUserInfo()?.let { Result.success(it) } ?: result
             }
-            if (result.isSuccess || force) result
-            else sessionStore.getUserInfo()?.let { Result.success(it) } ?: result
         }
     }
 
@@ -162,6 +197,6 @@ class SubscribeRepository @Inject constructor(
         transferEnable = transferEnable,
         usedTraffic = upload + download,
         expiredAt = expiredAt,
-        resetDay = resetDay,
+        subscribeUrl = subscribeUrl,
     )
 }

@@ -10,7 +10,6 @@ import kotlinx.serialization.Serializable
  * @param transferEnable 总可用流量（字节）
  * @param usedTraffic 已用流量（字节）
  * @param expiredAt 套餐到期时间戳（秒）
- * @param resetDay 每月流量重置日
  */
 @Serializable
 data class SubscribeInfo(
@@ -18,13 +17,13 @@ data class SubscribeInfo(
     val transferEnable: Long,
     val usedTraffic: Long,
     val expiredAt: Long,
-    val resetDay: Int? = null,
     val planId: Int = 0,
+    val subscribeUrl: String? = null,
 ) {
     /** 是否有有效套餐：以套餐 ID 为准；无 planId 时按流量判断 */
     val hasPlan: Boolean get() = planName.isNotBlank() && (planId > 0 || transferEnable > 0L)
 
-    /** 套餐是否已到期 */
+    /** 是否已到期：expiredAt 为 0 表示不限时，不视为到期 */
     val expired: Boolean get() = expiredAt > 0L && currentTimeSeconds() > expiredAt
 
     companion object {

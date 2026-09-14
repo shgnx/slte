@@ -3,24 +3,26 @@ package com.slte.app
 import com.slte.app.domain.model.SubscribeInfo
 import com.slte.app.domain.usecase.DaysUntilExpiryUseCase
 import com.slte.app.utils.FormatUtils
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.Instant
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 
+/**
+ * 领域模型与格式化工具纯逻辑测试：订阅有效性、到期天数与余额/流量格式化。
+ */
 class DomainLogicTest {
-
     @Test
     fun `订阅信息有效性与到期判断`() {
-        val active = SubscribeInfo(
-            planName = "初级套餐",
-            transferEnable = 120L,
-            usedTraffic = 10L,
-            expiredAt = Instant.now().epochSecond + 86400L
-        )
+        val active =
+            SubscribeInfo(
+                planName = "初级套餐",
+                transferEnable = 120L,
+                usedTraffic = 10L,
+                expiredAt = Instant.now().epochSecond + 86400L,
+            )
         assertTrue(active.hasPlan)
         assertFalse(active.expired)
 
@@ -33,13 +35,14 @@ class DomainLogicTest {
 
     @Test
     fun `hasPlan 以套餐 ID 为准，兼容 transferEnable 为 0 的套餐`() {
-        val byPlanId = SubscribeInfo(
-            planName = "Pro",
-            transferEnable = 0L,
-            usedTraffic = 0L,
-            expiredAt = 0L,
-            planId = 1
-        )
+        val byPlanId =
+            SubscribeInfo(
+                planName = "Pro",
+                transferEnable = 0L,
+                usedTraffic = 0L,
+                expiredAt = 0L,
+                planId = 1,
+            )
         assertTrue(byPlanId.hasPlan)
 
         // 缓存未携带 planId 时按流量判断
@@ -55,7 +58,12 @@ class DomainLogicTest {
     fun `到期剩余天数`() {
         val useCase = DaysUntilExpiryUseCase()
         assertEquals(0, useCase(0L))
-        val fiveDays = Instant.now().plus(5, ChronoUnit.DAYS).plusSeconds(2).epochSecond
+        val fiveDays =
+            Instant
+                .now()
+                .plus(5, ChronoUnit.DAYS)
+                .plusSeconds(2)
+                .epochSecond
         assertEquals(5, useCase(fiveDays))
         val expired = Instant.now().minus(1, ChronoUnit.DAYS).epochSecond
         assertEquals(0, useCase(expired))

@@ -5,7 +5,7 @@ data class InviteCodeInfo(
     val code: String = "",
     val pv: Int = 0,
     val status: Int = 0,
-    val createdAt: Long = 0L
+    val createdAt: Long = 0L,
 )
 
 /** 邀请统计（金额单位分） */
@@ -14,12 +14,12 @@ data class InviteStat(
     val totalCommission: Int = 0,
     val pendingCommission: Int = 0,
     val commissionRate: Int = 0,
-    val availableBalance: Int = 0
+    val availableBalance: Int = 0,
 )
 
 data class InviteInfo(
     val codes: List<InviteCodeInfo> = emptyList(),
-    val stat: InviteStat = InviteStat()
+    val stat: InviteStat = InviteStat(),
 )
 
 /** 佣金明细（金额单位分） */
@@ -28,5 +28,5 @@ data class CommissionRecord(
     val tradeNo: String = "",
     val orderAmount: Int = 0,
     val getAmount: Int = 0,
-    val createdAt: Long = 0L
+    val createdAt: Long = 0L,
 )

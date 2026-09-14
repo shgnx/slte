@@ -6,7 +6,6 @@ import kotlinx.serialization.Serializable
  * 已登录用户信息。
  *
  * @param id 用户唯一标识（复用 JWT token）
- * @param displayName 用户显示名
  * @param email 登录邮箱，用于 UI 展示
  * @param authData JWT 认证令牌，用于认证后 API 请求
  * @param subscribeToken 订阅 token，用于订阅链接和会话身份标识
@@ -17,11 +16,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class User(
     val id: String,
-    val displayName: String,
     val email: String = "",
     val authData: String = "",
     val subscribeToken: String = "",
     val balance: String = "0.00",
     val remindExpire: Int = 0,
-    val remindTraffic: Int = 0
+    val remindTraffic: Int = 0,
 )

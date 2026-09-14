@@ -1,0 +1,42 @@
+version: 2
+# 依赖与 Action 升级：由 Dependabot 提 PR，CI（单测 + ktlint + lint）自动验收。
+# 版本目录见 gradle/libs.versions.toml；与 Kotlin/compileSdk 有硬约束的条目见下方 ignore 列表。
+updates:
+  - package-ecosystem: gradle
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    groups:
+      # Compose 全家桶必须同批升级（BOM 与各 artifact 版本相互约束）
+      compose:
+        patterns:
+          - "androidx.compose*"
+      androidx:
+        patterns:
+          - "androidx.*"
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "com.google.devtools.ksp*"
+      net:
+        patterns:
+          - "com.squareup.*"
+          - "com.squareup.okhttp3*"
+          - "com.squareup.retrofit2*"
+    ignore:
+      # 与 Kotlin/compileSdk 存在硬约束的条目：升级需人工联动，禁止自动提 PR
+      # （见 gradle/libs.versions.toml 中的版本注释）
+      - dependency-name: "com.mikepenz:multiplatform-markdown-renderer*"
+      - dependency-name: "com.android.tools.build:gradle"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    labels:
+      - ci

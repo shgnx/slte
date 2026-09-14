@@ -7,6 +7,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/**
+ * 更新弹窗决策（force/manual/稍后提醒）与版本号比较规则测试。
+ */
 class UpdateViewModelLogicTest {
     @Test
     fun manualCheckAlwaysResponds() {

@@ -13,7 +13,7 @@ sealed interface PurchaseStep {
         val couponDiscount: Int = 0,
         val couponVerified: Boolean = false,
         val isVerifying: Boolean = false,
-        val showWarning: Boolean = false
+        val showWarning: Boolean = false,
     ) : PurchaseStep {
         /** 原价（分） */
         val priceCents: Int
@@ -37,7 +37,7 @@ sealed interface PurchaseStep {
         val paymentMethods: List<PaymentMethod> = emptyList(),
         val selectedMethod: Int? = null,
         val isLoading: Boolean = true,
-        val isPaying: Boolean = false
+        val isPaying: Boolean = false,
     ) : PurchaseStep {
         /** 产品原价（分）：后端 total_amount 为扣减后净值，按各抵扣字段还原 */
         val productPrice: Int
@@ -52,19 +52,22 @@ sealed interface PurchaseStep {
             get() = payAmount <= 0
     }
 
-    data class Paying(val redirectUrl: String) : PurchaseStep
+    data class Paying(
+        val redirectUrl: String,
+    ) : PurchaseStep
 
     /** 创建订单失败，有未支付订单 */
     data class ExistingOrderError(
         val errorMessageRes: Int,
         val plan: PlanInfo,
         val period: String,
-        val couponCode: String?
+        val couponCode: String?,
     ) : PurchaseStep
 
     /** 其他创建订单失败 */
-    data class OrderCreateError(val errorMessageRes: Int) : PurchaseStep
+    data class OrderCreateError(
+        val errorMessageRes: Int,
+    ) : PurchaseStep
 
-    /** 空状态 */
     data object Idle : PurchaseStep
 }
