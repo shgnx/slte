@@ -102,7 +102,7 @@ jobs:
 
       - name: 上传检查报告（失败时）
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: SLTE-CI-reports
           path: |

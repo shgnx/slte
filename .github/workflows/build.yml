@@ -248,7 +248,7 @@ jobs:
 
       - name: 上传检查报告
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: SLTE-reports-${{ inputs.versionName }}
           path: |
@@ -257,7 +257,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: 上传产物
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: SLTE-${{ inputs.versionName }}
           path: app/build/outputs/apk/*/SLTE-*.apk
