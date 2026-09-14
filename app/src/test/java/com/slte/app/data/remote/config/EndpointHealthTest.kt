@@ -5,8 +5,10 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/**
+ * 端点健康状态机测试：降级、熔断、半开、恢复与指数退避。
+ */
 class EndpointHealthTest {
-
     @Test
     fun `连续失败未达阈值保持降级`() {
         var cur = EndpointHealth("https://a.example.com")
@@ -31,7 +33,6 @@ class EndpointHealthTest {
         repeat(3) { cur = EndpointHealthRules.onFailure(cur, 1000L) }
         val openedAt = cur.openedAt
         val backoff = cur.backoffMs
-        // 超过退避期后进入半开
         val after = openedAt + backoff + 10_000
         assertEquals(HealthState.HALF_OPEN, EndpointHealthRules.state(cur, after))
     }

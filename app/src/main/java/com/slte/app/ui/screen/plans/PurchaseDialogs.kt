@@ -10,12 +10,11 @@ import androidx.compose.ui.text.font.FontWeight
 import com.slte.app.R
 import com.slte.app.ui.component.LocaleAwareAlertDialog
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ConfirmWarningDialog(
     onConfirm: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     LocaleAwareAlertDialog(
@@ -26,7 +25,7 @@ internal fun ConfirmWarningDialog(
         title = {
             Text(
                 text = stringResource(R.string.purchase_warning_title),
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             )
         },
         text = {
@@ -47,17 +46,15 @@ internal fun ConfirmWarningDialog(
             }) {
                 Text(stringResource(R.string.purchase_confirm))
             }
-        }
+        },
     )
 }
-
-
 
 @Composable
 internal fun ExistingOrderErrorDialog(
     errorMessageRes: Int,
     onGoToOrders: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     LocaleAwareAlertDialog(
@@ -68,7 +65,7 @@ internal fun ExistingOrderErrorDialog(
         title = {
             Text(
                 text = stringResource(R.string.purchase_existing_order_title),
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             )
         },
         text = {
@@ -89,15 +86,14 @@ internal fun ExistingOrderErrorDialog(
             }) {
                 Text(stringResource(R.string.order_pay))
             }
-        }
+        },
     )
 }
-
 
 @Composable
 internal fun OrderCreateErrorDialog(
     errorMessageRes: Int,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     LocaleAwareAlertDialog(
@@ -108,7 +104,7 @@ internal fun OrderCreateErrorDialog(
         title = {
             Text(
                 text = stringResource(R.string.purchase_error_title),
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             )
         },
         text = {
@@ -121,6 +117,6 @@ internal fun OrderCreateErrorDialog(
             }) {
                 Text(stringResource(R.string.purchase_confirm))
             }
-        }
+        },
     )
 }

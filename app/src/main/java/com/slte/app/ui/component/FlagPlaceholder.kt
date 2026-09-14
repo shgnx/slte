@@ -12,6 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import coil3.compose.SubcomposeAsyncImage
@@ -32,39 +34,45 @@ fun FlagPlaceholder(
     countryCode: String,
     modifier: Modifier = Modifier,
     size: Dp = Dimens.flagSize,
-    circular: Boolean = false
+    circular: Boolean = false,
 ) {
     val normalized = countryCode.lowercase()
-    val flagModifier = if (circular) {
-        modifier.size(size).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)
-    } else {
-        modifier.size(width = size, height = size * FlagHeightRatio)
-    }
+    val flagModifier =
+        if (circular) {
+            modifier.size(size).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)
+        } else {
+            modifier.size(width = size, height = size * FlagHeightRatio)
+        }
     SubcomposeAsyncImage(
         model = "file:///android_asset/flags/$normalized.svg",
         contentDescription = countryCode,
         contentScale = if (circular) ContentScale.Crop else ContentScale.Fit,
         loading = { FlagFallback(countryCode, size, circular) },
         error = { FlagFallback(countryCode, size, circular) },
-        modifier = flagModifier
+        modifier = flagModifier,
     )
 }
 
 @Composable
-private fun FlagFallback(countryCode: String, size: Dp, circular: Boolean) {
+private fun FlagFallback(
+    countryCode: String,
+    size: Dp,
+    circular: Boolean,
+) {
     val shape = if (circular) CircleShape else RoundedCornerShape(Dimens.flagCornerRadius)
     Box(
-        modifier = Modifier
+        modifier =
+        Modifier
             .size(size)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceVariant),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = countryCode.uppercase(),
             fontSize = FlagFontSize,
             fontWeight = FontWeight.Bold,
-            color = SlteColors.current.iconBlue
+            color = SlteColors.current.accentInteractive,
         )
     }
 }
@@ -73,20 +81,29 @@ private fun FlagFallback(countryCode: String, size: Dp, circular: Boolean) {
 @Composable
 fun SpecialNodeIcon(
     icon: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
 ) {
     Box(
-        modifier = modifier
+        modifier =
+        modifier
             .size(Dimens.flagSize)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .then(
+                if (contentDescription != null) {
+                    Modifier.semantics { this.contentDescription = contentDescription }
+                } else {
+                    Modifier
+                },
+            ),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = icon,
             fontSize = FlagFontSize,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
     }
 }

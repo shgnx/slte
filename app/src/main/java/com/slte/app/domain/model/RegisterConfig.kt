@@ -7,5 +7,5 @@ data class RegisterConfig(
     /** 是否启用邮箱验证码注册 */
     val emailVerifyEnabled: Boolean = false,
     /** 是否强制填写邀请码（false 时邀请码为选填） */
-    val inviteForceEnabled: Boolean = false
+    val inviteForceEnabled: Boolean = false,
 )

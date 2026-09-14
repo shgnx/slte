@@ -5,13 +5,13 @@ import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 
 /**
- * 计算套餐到期剩余天数 UseCase。
+ * 计算套餐到期剩余天数。
  *
- * 根据到期时间戳和当前时间，计算距到期还有多少天。
- * 已到期（剩余 <= 0）或没有到期时间（0），返回 0。
+ * 已到期或未设置到期时间（时间戳 <= 0）时返回 0，结果不小于 0。
  */
-class DaysUntilExpiryUseCase @Inject constructor() {
-
+class DaysUntilExpiryUseCase
+@Inject
+constructor() {
     operator fun invoke(expiredAtEpochSeconds: Long): Int {
         if (expiredAtEpochSeconds <= 0L) return 0
         val now = Instant.now()

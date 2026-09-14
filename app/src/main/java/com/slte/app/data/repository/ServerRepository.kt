@@ -1,11 +1,11 @@
 package com.slte.app.data.repository
 
+import com.slte.app.BuildConfig
 import com.slte.app.data.local.SessionStore
 import com.slte.app.data.remote.api.AuthApi
 import com.slte.app.domain.model.ServerNode
 import com.slte.app.utils.AppLog
 import com.slte.app.utils.sanitizeLog
-import com.slte.app.BuildConfig
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,9 +13,11 @@ import javax.inject.Singleton
  * 服务器节点仓库：拉取节点列表并缓存，网络失败时回退缓存。
  */
 @Singleton
-class ServerRepository @Inject constructor(
+class ServerRepository
+@Inject
+constructor(
     private val authApi: AuthApi,
-    private val sessionStore: SessionStore
+    private val sessionStore: SessionStore,
 ) {
     private val CACHE_TTL_MS = 30 * 60_000L
 

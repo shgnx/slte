@@ -4,16 +4,19 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/**
+ * 端点选择策略测试：粘滞阈值、熔断跳过、候选去重与半开恢复。
+ */
 class EndpointSelectorTest {
-
     @Test
     fun `主地址健康时粘滞不切换`() {
         val selector = EndpointSelector()
-        val picked = selector.pickPrimary(
-            candidates = listOf("https://a.example.com", "https://b.example.com"),
-            probes = mapOf("https://a.example.com" to 100L, "https://b.example.com" to 80L),
-            currentPrimary = "https://a.example.com"
-        )
+        val picked =
+            selector.pickPrimary(
+                candidates = listOf("https://a.example.com", "https://b.example.com"),
+                probes = mapOf("https://a.example.com" to 100L, "https://b.example.com" to 80L),
+                currentPrimary = "https://a.example.com",
+            )
         // 仅快 20%（<30% 阈值），保持粘滞
         assertEquals("https://a.example.com", picked)
     }
@@ -21,11 +24,12 @@ class EndpointSelectorTest {
     @Test
     fun `候选明显更快时切换`() {
         val selector = EndpointSelector()
-        val picked = selector.pickPrimary(
-            candidates = listOf("https://a.example.com", "https://b.example.com"),
-            probes = mapOf("https://a.example.com" to 100L, "https://b.example.com" to 60L),
-            currentPrimary = "https://a.example.com"
-        )
+        val picked =
+            selector.pickPrimary(
+                candidates = listOf("https://a.example.com", "https://b.example.com"),
+                probes = mapOf("https://a.example.com" to 100L, "https://b.example.com" to 60L),
+                currentPrimary = "https://a.example.com",
+            )
         // 快 40%（>30% 阈值），切换
         assertEquals("https://b.example.com", picked)
     }
@@ -34,11 +38,12 @@ class EndpointSelectorTest {
     fun `主地址熔断时切换到健康候选`() {
         val selector = EndpointSelector()
         repeat(3) { selector.recordFailure("https://a.example.com") }
-        val picked = selector.pickPrimary(
-            candidates = listOf("https://a.example.com", "https://b.example.com"),
-            probes = mapOf("https://a.example.com" to 100L, "https://b.example.com" to 90L),
-            currentPrimary = "https://a.example.com"
-        )
+        val picked =
+            selector.pickPrimary(
+                candidates = listOf("https://a.example.com", "https://b.example.com"),
+                probes = mapOf("https://a.example.com" to 100L, "https://b.example.com" to 90L),
+                currentPrimary = "https://a.example.com",
+            )
         assertEquals("https://b.example.com", picked)
     }
 
@@ -46,10 +51,11 @@ class EndpointSelectorTest {
     fun `候选排序将熔断地址排最后`() {
         val selector = EndpointSelector()
         repeat(3) { selector.recordFailure("https://c.example.com") }
-        val order = selector.candidateOrder(
-            "https://a.example.com",
-            listOf("https://a.example.com", "https://b.example.com", "https://c.example.com")
-        )
+        val order =
+            selector.candidateOrder(
+                "https://a.example.com",
+                listOf("https://a.example.com", "https://b.example.com", "https://c.example.com"),
+            )
         assertEquals("https://a.example.com", order.first())
         assertEquals("https://c.example.com", order.last())
     }
@@ -59,10 +65,11 @@ class EndpointSelectorTest {
         // 候选入参可能已含主地址（如远程配置 api_base_urls 数组）：
         // 排序结果必须去重，同一地址出现两次会导致拦截器对同一地址二次重试
         val selector = EndpointSelector()
-        val order = selector.candidateOrder(
-            "https://a.example.com",
-            listOf("https://a.example.com", "https://b.example.com")
-        )
+        val order =
+            selector.candidateOrder(
+                "https://a.example.com",
+                listOf("https://a.example.com", "https://b.example.com"),
+            )
         assertEquals(1, order.count { it == "https://a.example.com" })
         assertEquals("https://a.example.com", order.first())
     }
@@ -72,7 +79,9 @@ class EndpointSelectorTest {
         val selector = EndpointSelector()
         repeat(3) { selector.recordFailure("https://a.example.com") }
         selector.recordSuccess("https://a.example.com", 50L)
-        val state = selector.state.value.endpoints.first { it.url == "https://a.example.com" }
+        val state =
+            selector.state.value.endpoints
+                .first { it.url == "https://a.example.com" }
         assertEquals(HealthState.HEALTHY, state.state)
         assertEquals(0, state.consecutiveFailures)
     }

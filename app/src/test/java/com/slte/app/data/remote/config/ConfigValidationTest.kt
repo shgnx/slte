@@ -6,8 +6,10 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/**
+ * 远程配置校验规则测试：API 地址/直连域名白名单、版本比较与多源择优。
+ */
 class ConfigValidationTest {
-
     private val allowed = listOf("example.com")
 
     @Test
@@ -44,18 +46,20 @@ class ConfigValidationTest {
 
     @Test
     fun `多源择优版本最高且同版本取延迟最小`() {
-        val list = listOf(
-            FetchedConfig("https://a.example.com", "{}", "1.0", 50),
-            FetchedConfig("https://b.example.com", "{}", "2.0", 10),
-            FetchedConfig("https://c.example.com", "{}", "1.5", 5)
-        )
+        val list =
+            listOf(
+                FetchedConfig("https://a.example.com", "{}", "1.0", 50),
+                FetchedConfig("https://b.example.com", "{}", "2.0", 10),
+                FetchedConfig("https://c.example.com", "{}", "1.5", 5),
+            )
         assertEquals("https://b.example.com", ConfigValidation.pickBest(list)?.url)
 
         // 版本相同取延迟最小（最先完成的镜像）
-        val sameVersion = listOf(
-            FetchedConfig("https://a.example.com", "{}", "1.0", 100),
-            FetchedConfig("https://b.example.com", "{}", "1.0", 20)
-        )
+        val sameVersion =
+            listOf(
+                FetchedConfig("https://a.example.com", "{}", "1.0", 100),
+                FetchedConfig("https://b.example.com", "{}", "1.0", 20),
+            )
         assertEquals("https://b.example.com", ConfigValidation.pickBest(sameVersion)?.url)
         assertNull(ConfigValidation.pickBest(emptyList()))
     }
@@ -71,7 +75,10 @@ class ConfigValidationTest {
 
     @Test
     fun `Base64编码的API地址被解码`() {
-        val encoded = java.util.Base64.getEncoder().encodeToString("https://api.example.com".toByteArray())
+        val encoded =
+            java.util.Base64
+                .getEncoder()
+                .encodeToString("https://api.example.com".toByteArray())
         assertEquals("https://api.example.com", ConfigValidation.decodeApiCandidate(encoded))
     }
 
@@ -84,17 +91,36 @@ class ConfigValidationTest {
     @Test
     fun `非URL的Base64不当地址`() {
         // "hello" 的 Base64：解码结果不是 URL，保持原文
-        val encoded = java.util.Base64.getEncoder().encodeToString("hello".toByteArray())
+        val encoded =
+            java.util.Base64
+                .getEncoder()
+                .encodeToString("hello".toByteArray())
         assertEquals(encoded, ConfigValidation.decodeApiCandidate(encoded))
     }
 
     @Test
     fun `Base64解码后仍须通过白名单与https校验`() {
-        val encoded = java.util.Base64.getEncoder().encodeToString("https://evil.com".toByteArray())
+        val encoded =
+            java.util.Base64
+                .getEncoder()
+                .encodeToString("https://evil.com".toByteArray())
         val decoded = ConfigValidation.decodeApiCandidate(encoded)
         assertEquals("https://evil.com", decoded)
         assertFalse(ConfigValidation.isValidApiUrl(decoded, allowed))
-        val httpEncoded = java.util.Base64.getEncoder().encodeToString("http://api.example.com".toByteArray())
+        val httpEncoded =
+            java.util.Base64
+                .getEncoder()
+                .encodeToString("http://api.example.com".toByteArray())
         assertFalse(ConfigValidation.isValidApiUrl(ConfigValidation.decodeApiCandidate(httpEncoded), allowed))
+    }
+
+    @Test
+    fun `failover候选须与主地址共享path`() {
+        assertTrue(ConfigValidation.hasSamePath("https://api1.example.com", "https://api2.example.com"))
+        assertTrue(ConfigValidation.hasSamePath("https://api1.example.com", "https://api2.example.com/"))
+        assertTrue(ConfigValidation.hasSamePath("https://api.example.com/v2", "https://api2.example.com/v2"))
+        assertFalse(ConfigValidation.hasSamePath("https://api.example.com/v2", "https://api2.example.com"))
+        assertFalse(ConfigValidation.hasSamePath("https://api.example.com/v2", "https://api2.example.com/v3"))
+        assertFalse(ConfigValidation.hasSamePath("https://api.example.com", "not a url"))
     }
 }

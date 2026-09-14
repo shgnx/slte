@@ -1,20 +1,22 @@
 package com.slte.app.ui.screen.main
 
 import com.slte.app.R
-import com.slte.app.data.remote.ApiException
 import com.slte.app.data.repository.OrderRepository
 import com.slte.app.data.repository.ServerRepository
 import com.slte.app.data.repository.SubscribeRepository
 import com.slte.app.domain.model.SubscribeInfo
+import com.slte.app.domain.model.isOrderActivated
 import com.slte.app.domain.usecase.DaysUntilExpiryUseCase
 import com.slte.app.kernel.KernelConfig
 import com.slte.app.kernel.KernelManager
 import com.slte.app.kernel.KernelProxy
+import com.slte.app.kernel.ProfileUpdateResult
 import com.slte.app.kernel.speedTestUntilReady
 import com.slte.app.utils.AppLog
 import com.slte.app.utils.Constants
 import com.slte.app.utils.ErrorMessages
 import com.slte.app.utils.sanitizeLog
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -25,7 +27,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
-import javax.inject.Inject
 
 /**
  * 订阅更新流程（手动/静默/支付后刷新）与状态写回。
@@ -33,7 +34,9 @@ import javax.inject.Inject
  * 只操作传入的 [DashboardData] 流与调用方提供的 scope，不持有 ViewModel 生命周期；
  * 手动/静默/支付刷新三个入口通过 [updateMutex] 串行化。
  */
-class SubscriptionUpdater @Inject constructor(
+class SubscriptionUpdater
+@Inject
+constructor(
     private val subscribeRepository: SubscribeRepository,
     private val kernelConfig: KernelConfig,
     private val serverRepository: ServerRepository,
@@ -42,86 +45,89 @@ class SubscriptionUpdater @Inject constructor(
     private val orderRepository: OrderRepository,
     private val daysUntilExpiryUseCase: DaysUntilExpiryUseCase,
 ) {
-
-    /** 订阅更新互斥：手动/静默/支付刷新三个入口串行化 */
+    /**
+     * 订阅更新互斥：手动/静默/支付刷新三个入口串行化。
+     *
+     * 闸门必须覆盖整个工作区间（含网络与内核写入），而不是只保护标志位翻转——
+     * 否则并发入口会同时改写同一份生效配置与缓存。
+     */
     private val updateMutex = Mutex()
 
-    /** 静默更新进行中标志（不展示 UI Loading） */
-    private var silentUpdating = false
+    /**
+     * 事件型入口（用户点击更新）：不排队，进行中直接忽略。
+     * 用 [Mutex.tryLock] 把「判断是否空闲」与「取得执行权」合成一步原子操作。
+     */
+    private suspend fun tryAcquireUpdateSlot(): Boolean = updateMutex.tryLock()
 
     /** 更新订阅（调用真实 API） */
-    suspend fun updateSubscription(data: MutableStateFlow<DashboardData>, scope: CoroutineScope) {
-        // 检查+置位原子化：三个入口互斥，避免并发双跑
-        val proceed = updateMutex.withLock {
-            if (data.value.isUpdating || !data.value.hasPlan) false
-            else {
-                data.update { it.copy(isUpdating = true) }
-                true
-            }
-        }
-        if (!proceed) return
-        subscribeRepository.fetchSubscribeInfo(force = true).fold(
-            onSuccess = {
-                // 等待内核配置更新完成后再提示，Loading 期间按钮保持转圈
-                val kernelOk = kernelConfig.updateProfile()
-                if (kernelOk) {
-                    // 订阅已更新：清掉节点缓存并重新拉取
-                    serverRepository.invalidateCache()
-                    loadServers(scope, data)
-                    // 测速后台执行，不阻塞订阅更新完成（节点不可达时不卡 UI）
-                    scope.launch { autoSpeedTestAfterUpdate() }
-                }
-                applySubscribeInfo(
-                    data,
-                    it,
-                    errorMessageRes = if (kernelOk) {
-                        R.string.dashboard_refresh_done
-                    } else {
-                        R.string.api_error_subscribe_info
+    suspend fun updateSubscription(
+        data: MutableStateFlow<DashboardData>,
+        scope: CoroutineScope,
+    ) {
+        if (!tryAcquireUpdateSlot()) return
+        try {
+            if (!data.value.hasPlan) return
+            data.update { it.copy(isUpdating = true) }
+            subscribeRepository.fetchSubscribeInfo(force = true).fold(
+                onSuccess = {
+                    // 等待内核配置更新完成后再提示，Loading 期间按钮保持转圈
+                    val kernelResult = kernelConfig.updateProfile()
+                    val kernelOk = kernelResult != ProfileUpdateResult.FAILED
+                    if (kernelOk) {
+                        // 订阅已更新：清掉节点缓存并重新拉取
+                        serverRepository.invalidateCache()
+                        loadServers(scope, data)
+                        // 测速后台执行，不阻塞订阅更新完成（节点不可达时不卡 UI）
+                        scope.launch { autoSpeedTestAfterUpdate(configChanged = true) }
                     }
-                )
-            },
-            onFailure = { e ->
-                val resId = if (e is ApiException) {
-                    ErrorMessages.mapSubscribeError(e.message)
-                } else {
-                    ErrorMessages.networkError()
-                }
-                data.update { it.copy(isUpdating = false, errorMessageRes = resId) }
-            }
-        )
+                    applySubscribeInfo(
+                        data,
+                        it,
+                        errorMessageRes =
+                        if (kernelOk) {
+                            R.string.dashboard_refresh_done
+                        } else {
+                            R.string.api_error_subscribe_info
+                        },
+                    )
+                },
+                onFailure = { e ->
+                    val resId =
+                        ErrorMessages.forSubscribe(e)
+                    data.update { it.copy(isUpdating = false, errorMessageRes = resId) }
+                },
+            )
+        } finally {
+            updateMutex.unlock()
+        }
     }
 
     /** 每次进入软件自动更新订阅：失败静默（保留缓存展示，不弹错误） */
-    suspend fun maybeSilentUpdate(data: MutableStateFlow<DashboardData>, scope: CoroutineScope) {
-        val proceed = updateMutex.withLock {
-            if (data.value.isUpdating || silentUpdating) false
-            else {
-                silentUpdating = true
-                true
-            }
-        }
-        if (!proceed) return
+    suspend fun maybeSilentUpdate(
+        data: MutableStateFlow<DashboardData>,
+        scope: CoroutineScope,
+    ) {
+        if (!tryAcquireUpdateSlot()) return
         try {
             subscribeRepository.fetchSubscribeInfo(force = true).fold(
                 onSuccess = { info ->
                     // 无套餐不更新内核（空订阅没有可导入的节点）
                     if (!info.hasPlan) return@fold
-                    val ok = kernelConfig.updateProfile()
-                    if (ok) {
+                    val result = kernelConfig.updateProfile()
+                    if (result != ProfileUpdateResult.FAILED) {
                         serverRepository.invalidateCache()
                         loadServers(scope, data)
-                        scope.launch { autoSpeedTestAfterUpdate() }
+                        scope.launch { autoSpeedTestAfterUpdate(configChanged = true) }
                         applySubscribeInfo(data, info, errorMessageRes = null)
                     }
                 },
                 onFailure = { e ->
                     // 静默失败：不打扰用户，留痕供排查，下次进入再试
                     AppLog.w("SLTE-Main", "silent subscription update failed: ${sanitizeLog(e.message ?: "Unknown")}")
-                }
+                },
             )
         } finally {
-            silentUpdating = false
+            updateMutex.unlock()
         }
     }
 
@@ -134,7 +140,10 @@ class SubscriptionUpdater @Inject constructor(
     }
 
     /** 拉取服务器列表更新首页节点名；空列表时清除已失效的展示数据 */
-    fun loadServers(scope: CoroutineScope, data: MutableStateFlow<DashboardData>) {
+    fun loadServers(
+        scope: CoroutineScope,
+        data: MutableStateFlow<DashboardData>,
+    ) {
         scope.launch {
             serverRepository.fetchServers().fold(
                 onSuccess = { servers ->
@@ -144,77 +153,88 @@ class SubscriptionUpdater @Inject constructor(
                         data.update {
                             it.copy(
                                 serverName = Constants.PLACEHOLDER_DASH,
-                                currentIp = Constants.PLACEHOLDER_DASH
+                                currentIp = Constants.PLACEHOLDER_DASH,
                             )
                         }
                     }
                 },
                 onFailure = { e ->
                     AppLog.w("SLTE-Main", "loadServers failed: ${sanitizeLog(e.message ?: "Unknown")}")
-                }
+                },
             )
         }
     }
 
+    /**
+     * 支付完成后的刷新：这是不可丢弃的入口，因此排队等待在途更新（含静默更新）结束后再执行。
+     * 原实现只等 `isUpdating` 翻假，而静默更新期间该标志恒为 false，导致两者并发改写配置与缓存。
+     */
     fun refreshAfterPurchase(
         data: MutableStateFlow<DashboardData>,
         tradeNo: String? = null,
         scope: CoroutineScope,
     ): Job = scope.launch {
-        if (data.value.isUpdating) {
-            withTimeoutOrNull(PURCHASE_REFRESH_TIMEOUT_MS) { data.first { !it.isUpdating } }
-        }
-        data.update { it.copy(isUpdating = true) }
-        val deadline = System.currentTimeMillis() + PURCHASE_REFRESH_TIMEOUT_MS
-        var info = subscribeRepository.fetchSubscribeInfo(force = true).getOrNull()
-        var activated = true
-        if (tradeNo != null) {
-            activated = false
-            while (System.currentTimeMillis() < deadline && !activated) {
-                activated = orderRepository.getOrderDetail(tradeNo).getOrNull()?.status in ORDER_COMPLETED_STATUSES
-                if (!activated) {
+        updateMutex.withLock {
+            data.update { it.copy(isUpdating = true) }
+            val deadline = System.currentTimeMillis() + PURCHASE_REFRESH_TIMEOUT_MS
+            var info = subscribeRepository.fetchSubscribeInfo(force = true).getOrNull()
+            var activated = true
+            if (tradeNo != null) {
+                activated = false
+                while (System.currentTimeMillis() < deadline && !activated) {
+                    activated =
+                        orderRepository
+                            .getOrderDetail(tradeNo)
+                            .getOrNull()
+                            ?.status
+                            ?.let(::isOrderActivated) == true
+                    if (!activated) {
+                        delay(3000)
+                        info = subscribeRepository.fetchSubscribeInfo(force = true).getOrNull()
+                    }
+                }
+            } else {
+                while (System.currentTimeMillis() < deadline && info?.hasPlan != true) {
                     delay(3000)
                     info = subscribeRepository.fetchSubscribeInfo(force = true).getOrNull()
                 }
             }
-        } else {
-            while (System.currentTimeMillis() < deadline && info?.hasPlan != true) {
-                delay(3000)
+            subscribeRepository.fetchUserInfo()
+            if (activated) {
                 info = subscribeRepository.fetchSubscribeInfo(force = true).getOrNull()
             }
-        }
-        subscribeRepository.fetchUserInfo()
-        if (activated) {
-            info = subscribeRepository.fetchSubscribeInfo(force = true).getOrNull()
-        }
-        val hasPlan = info?.hasPlan == true
-        val kernelOk = if (hasPlan) kernelConfig.updateProfile() else false
-        serverRepository.invalidateCache()
-        var servers = serverRepository.fetchServers(force = true).getOrNull().orEmpty()
-        if (servers.isEmpty() && hasPlan) {
-            delay(3000)
-            servers = serverRepository.fetchServers(force = true).getOrNull().orEmpty()
-        }
-        if (servers.isNotEmpty()) {
-            data.update { it.copy(serverName = servers.first().name) }
-        } else {
-            data.update {
-                it.copy(
-                    serverName = Constants.PLACEHOLDER_DASH,
-                    currentIp = Constants.PLACEHOLDER_DASH
-                )
+            val hasPlan = info?.hasPlan == true
+            val kernelResult = if (hasPlan) kernelConfig.updateProfile() else ProfileUpdateResult.FAILED
+            serverRepository.invalidateCache()
+            var servers = serverRepository.fetchServers(force = true).getOrNull().orEmpty()
+            if (servers.isEmpty() && hasPlan) {
+                delay(3000)
+                servers = serverRepository.fetchServers(force = true).getOrNull().orEmpty()
             }
-        }
-        applySubscribeInfo(
-            data,
-            info ?: subscribeRepository.getCachedSubscribeInfo(),
-            errorMessageRes = if (!activated && tradeNo != null) {
-                R.string.purchase_activation_timeout
+            if (servers.isNotEmpty()) {
+                data.update { it.copy(serverName = servers.first().name) }
             } else {
-                null
+                data.update {
+                    it.copy(
+                        serverName = Constants.PLACEHOLDER_DASH,
+                        currentIp = Constants.PLACEHOLDER_DASH,
+                    )
+                }
             }
-        )
-        if (kernelOk) scope.launch { autoSpeedTestAfterUpdate() }
+            applySubscribeInfo(
+                data,
+                info ?: subscribeRepository.getCachedSubscribeInfo(),
+                errorMessageRes =
+                if (!activated && tradeNo != null) {
+                    R.string.purchase_activation_timeout
+                } else {
+                    null
+                },
+            )
+            if (hasPlan && kernelResult != ProfileUpdateResult.FAILED) {
+                scope.launch { autoSpeedTestAfterUpdate(configChanged = kernelResult == ProfileUpdateResult.UPDATED) }
+            }
+        }
     }
 
     /** 全屏刷新全部完成后关闭 Loading */
@@ -228,19 +248,16 @@ class SubscriptionUpdater @Inject constructor(
         subscribeRepository.fetchSubscribeInfo().fold(
             onSuccess = { applySubscribeInfo(data, it, errorMessageRes = null) },
             onFailure = { e ->
-                val resId = if (e is ApiException) {
-                    ErrorMessages.mapSubscribeError(e.message)
-                } else {
-                    ErrorMessages.networkError()
-                }
+                val resId =
+                    ErrorMessages.forSubscribe(e)
                 data.update {
                     it.copy(
                         isRefreshing = false,
                         dataLoaded = true,
-                        errorMessageRes = resId
+                        errorMessageRes = resId,
                     )
                 }
-            }
+            },
         )
     }
 
@@ -253,11 +270,11 @@ class SubscriptionUpdater @Inject constructor(
 
     /**
      * 更新订阅成功后自动测速并缓存结果：
-     * 已连接时先等内核配置重载完成（profileLoaded 递增）；
-     * 未连接时直接测速（speedTest 内部会确保配置已加载）。
+     * 配置发生变更且已连接时先等内核重载完成（profileLoaded 递增）；
+     * 未变更时直接测速（speedTest 内部会确保配置已加载）。
      */
-    private suspend fun autoSpeedTestAfterUpdate() {
-        if (kernelManager.connected.value) {
+    private suspend fun autoSpeedTestAfterUpdate(configChanged: Boolean) {
+        if (configChanged && kernelManager.connected.value) {
             val before = kernelManager.profileLoaded.value
             withTimeoutOrNull(SPEED_TEST_WAIT_MS) {
                 kernelManager.profileLoaded.first { it > before }
@@ -266,8 +283,12 @@ class SubscriptionUpdater @Inject constructor(
         kernelProxy.speedTestUntilReady()
     }
 
-    /** 将订阅信息填充到仪表盘，并保留本地缓存逻辑 */
-    private fun applySubscribeInfo(data: MutableStateFlow<DashboardData>, info: SubscribeInfo?, errorMessageRes: Int?) {
+    /** 将订阅信息填充到仪表盘状态（套餐失效时清节点缓存） */
+    private fun applySubscribeInfo(
+        data: MutableStateFlow<DashboardData>,
+        info: SubscribeInfo?,
+        errorMessageRes: Int?,
+    ) {
         val planValid = info?.hasPlan == true && !info.expired
         // 套餐失效（过期/无套餐）时清掉节点缓存
         if (!planValid) serverRepository.invalidateCache()
@@ -295,7 +316,5 @@ class SubscriptionUpdater @Inject constructor(
 
         /** 支付后等待订单开通的最长时间（毫秒） */
         private const val PURCHASE_REFRESH_TIMEOUT_MS = 60_000L
-
-        private val ORDER_COMPLETED_STATUSES = setOf(3)
     }
 }

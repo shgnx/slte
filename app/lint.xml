@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Lint 配置（除本文件外的规则与豁免统一走根目录 .editorconfig / 代码注释说明）。
+-->
+<lint>
+    <!--
+      mipmap-anydpi-v26 是自适应图标（adaptive-icon XML）的 AAPT 必备限定符：
+      改成 mipmap-anydpi 后 AAPT 直接报 "resource mipmap/ic_launcher not found"。
+      ObsoleteSdkInt 只按 minSdk 推断该目录可合并，属误报，这里定点忽略。
+    -->
+    <issue id="ObsoleteSdkInt">
+        <ignore path="src/main/res/mipmap-anydpi-v26" />
+    </issue>
+</lint>

@@ -18,9 +18,8 @@ import java.util.Locale
  */
 class LocaleContextWrapper(
     base: Context,
-    private val storedLocaleProvider: () -> Locale?
+    private val storedLocaleProvider: () -> Locale?,
 ) : ContextWrapper(base) {
-
     private var effectiveLocale: Locale? = null
     private var cachedResources: Resources? = null
 
@@ -39,7 +38,10 @@ class LocaleContextWrapper(
 }
 
 /** 解析实际生效语言：显式选择优先，跟随系统时未支持语言回退英文 */
-internal fun resolveEffectiveLocale(systemLocale: Locale, storedLocale: Locale?): Locale = when {
+internal fun resolveEffectiveLocale(
+    systemLocale: Locale,
+    storedLocale: Locale?,
+): Locale = when {
     storedLocale != null -> storedLocale
     systemLocale.language == "zh" && isTraditionalChinese(systemLocale) -> Locale.TRADITIONAL_CHINESE
     systemLocale.language == "zh" -> Locale.SIMPLIFIED_CHINESE
@@ -48,10 +50,12 @@ internal fun resolveEffectiveLocale(systemLocale: Locale, storedLocale: Locale?)
 }
 
 /** 判断是否繁体中文：优先按 script，低版本系统按地区兜底 */
-internal fun isTraditionalChinese(locale: Locale): Boolean =
-    locale.language == "zh" && (
+internal fun isTraditionalChinese(locale: Locale): Boolean = locale.language == "zh" &&
+    (
         locale.script == "Hant" ||
-            locale.country == "TW" || locale.country == "HK" || locale.country == "MO"
+            locale.country == "TW" ||
+            locale.country == "HK" ||
+            locale.country == "MO"
         )
 
 /**

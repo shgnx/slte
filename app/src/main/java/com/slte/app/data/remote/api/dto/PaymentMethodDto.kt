@@ -7,14 +7,14 @@ data class PaymentMethodDto(
     val id: Int,
     val name: String,
     val payment: String = "",
-    val icon: String? = null
+    val icon: String? = null,
 )
 
 /**
  * 创建订单结果。
  */
 data class CreateOrderResultDto(
-    val tradeNo: String
+    val tradeNo: String,
 )
 
 /**
@@ -28,7 +28,7 @@ data class CheckoutResultDto(
     val type: Int,
     val redirectUrl: String? = null,
     val message: String? = null,
-    val paid: Boolean = false
+    val paid: Boolean = false,
 ) {
     companion object {
         /** data 可能为布尔（免费/直付）或字符串（跳转 URL），须按原始 JSON 解析 */
@@ -38,7 +38,7 @@ data class CheckoutResultDto(
                 type = json.optInt("type", 0),
                 redirectUrl = (json.opt("data") as? String)?.takeIf { it.isNotBlank() },
                 message = json.optString("message").takeIf { it.isNotBlank() },
-                paid = json.optBoolean("data", false)
+                paid = json.optBoolean("data", false),
             )
         }.getOrNull()
     }

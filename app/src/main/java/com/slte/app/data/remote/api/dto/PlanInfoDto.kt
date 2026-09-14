@@ -37,5 +37,5 @@ data class PlanInfoDto(
     val transferEnable: Int = 0,
     val show: Boolean = true,
     val renew: Boolean = true,
-    val sort: Int? = null
+    val sort: Int? = null,
 )

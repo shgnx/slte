@@ -4,6 +4,9 @@ import com.slte.app.utils.AppLog
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
+/**
+ * 日志脱敏测试：token/密码/邮箱/URL 等敏感字段被遮蔽，普通文本原样保留。
+ */
 class AppLogSanitizeTest {
     @Test
     fun masksSensitiveVariants() {

@@ -1,5 +1,6 @@
 package com.slte.app.data.remote.adapter.xboard
 
+import com.slte.app.data.remote.api.ApiResponse
 import com.slte.app.data.remote.api.dto.LoginResponseDto
 import com.slte.app.data.remote.api.dto.SubscribeInfoDto
 import com.slte.app.data.remote.api.dto.UserInfoDto
@@ -10,11 +11,10 @@ import com.slte.app.domain.model.InviteStat
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-
 @Serializable
 data class XboardLoginRequest(
     val email: String,
-    val password: String
+    val password: String,
 )
 
 @Serializable
@@ -22,26 +22,26 @@ data class XboardRegisterRequest(
     val email: String,
     val password: String,
     val email_code: String? = null,
-    val invite_code: String? = null
+    val invite_code: String? = null,
 )
 
 @Serializable
 data class XboardForgotRequest(
     val email: String,
     val password: String,
-    val email_code: String
+    val email_code: String,
 )
 
 @Serializable
 data class XboardSendCodeRequest(
     val email: String,
-    val isforget: Int
+    val isforget: Int,
 )
 
 @Serializable
 data class XboardTransferRequest(
     @SerialName("transfer_amount")
-    val transferAmount: Int
+    val transferAmount: Int,
 )
 
 @Serializable
@@ -49,13 +49,21 @@ data class XboardWithdrawRequest(
     @SerialName("withdraw_method")
     val withdrawMethod: String,
     @SerialName("withdraw_account")
-    val withdrawAccount: String
+    val withdrawAccount: String,
+)
+
+@Serializable
+data class XboardUserCommConfigData(
+    @SerialName("withdraw_methods")
+    val withdrawMethods: List<String>? = null,
+    @SerialName("withdraw_close")
+    val withdrawClose: Int? = 0,
 )
 
 @Serializable
 data class XboardRemoveSessionRequest(
     @SerialName("session_id")
-    val sessionId: String
+    val sessionId: String,
 )
 
 @Serializable
@@ -63,7 +71,7 @@ data class XboardUpdateUserRequest(
     @SerialName("remind_expire")
     val remindExpire: Int? = null,
     @SerialName("remind_traffic")
-    val remindTraffic: Int? = null
+    val remindTraffic: Int? = null,
 )
 
 @Serializable
@@ -71,34 +79,32 @@ data class XboardChangePasswordRequest(
     @SerialName("old_password")
     val oldPassword: String,
     @SerialName("new_password")
-    val newPassword: String
+    val newPassword: String,
 )
-
 
 @Serializable
 data class XboardResponse<T>(
-    val data: T? = null,
-    val message: String? = null
-)
-
+    override val data: T? = null,
+    override val message: String? = null,
+) : ApiResponse<T>
 
 @Serializable
 data class XboardLoginData(
     val token: String,
-    val auth_data: String
+    val auth_data: String,
 )
 
 /** 登录/注册响应 → 领域 DTO（auth_data 即后续请求的 JWT） */
 fun XboardLoginData.toDomainLoginResponse() = LoginResponseDto(
     token = token,
-    authData = auth_data
+    authData = auth_data,
 )
 
 /** Xboard 站点配置响应，仅提取注册相关字段 */
 @Serializable
 data class XboardSiteConfig(
     val is_email_verify: Int? = 0,
-    val is_invite_force: Int? = 0
+    val is_invite_force: Int? = 0,
 )
 
 @Serializable
@@ -114,7 +120,7 @@ data class XboardUserInfoData(
     @SerialName("remind_expire")
     val remindExpire: Boolean = false,
     @SerialName("remind_traffic")
-    val remindTraffic: Boolean = false
+    val remindTraffic: Boolean = false,
 )
 
 fun XboardUserInfoData.toDomainUserInfo() = UserInfoDto(
@@ -124,7 +130,7 @@ fun XboardUserInfoData.toDomainUserInfo() = UserInfoDto(
     expiredAt = expiredAt,
     transferEnable = transferEnable,
     remindExpire = if (remindExpire) 1 else 0,
-    remindTraffic = if (remindTraffic) 1 else 0
+    remindTraffic = if (remindTraffic) 1 else 0,
 )
 
 /** 订阅信息响应：包含套餐详情 */
@@ -138,9 +144,9 @@ data class XboardSubscribeData(
     val transferEnable: Long = 0L,
     val u: Long = 0L,
     val d: Long = 0L,
-    @SerialName("reset_day")
-    val resetDay: Int? = null,
-    val plan: XboardPlanData? = null
+    @SerialName("subscribe_url")
+    val subscribeUrl: String? = null,
+    val plan: XboardPlanData? = null,
 )
 
 fun XboardSubscribeData.toDomainSubscribeInfo() = SubscribeInfoDto(
@@ -150,9 +156,8 @@ fun XboardSubscribeData.toDomainSubscribeInfo() = SubscribeInfoDto(
     transferEnable = transferEnable,
     upload = u,
     download = d,
-    resetDay = resetDay
+    subscribeUrl = subscribeUrl,
 )
-
 
 @Serializable
 data class XboardInviteCodeData(
@@ -166,7 +171,7 @@ data class XboardInviteCodeData(
     @SerialName("created_at")
     val createdAt: Long = 0L,
     @SerialName("updated_at")
-    val updatedAt: Long = 0L
+    val updatedAt: Long = 0L,
 )
 
 fun XboardInviteCodeData.toDomain() = InviteCodeInfo(
@@ -174,7 +179,7 @@ fun XboardInviteCodeData.toDomain() = InviteCodeInfo(
     code = code,
     pv = pv,
     status = if (status) 1 else 0,
-    createdAt = createdAt
+    createdAt = createdAt,
 )
 
 /**
@@ -185,18 +190,19 @@ fun XboardInviteCodeData.toDomain() = InviteCodeInfo(
 @Serializable
 data class XboardInviteData(
     val codes: List<XboardInviteCodeData> = emptyList(),
-    val stat: List<Int> = emptyList()
+    val stat: List<Int> = emptyList(),
 )
 
 fun XboardInviteData.toDomain() = InviteInfo(
     codes = codes.map { it.toDomain() },
-    stat = InviteStat(
+    stat =
+    InviteStat(
         registeredUsers = stat.getOrElse(0) { 0 },
         totalCommission = stat.getOrElse(1) { 0 },
         pendingCommission = stat.getOrElse(2) { 0 },
         commissionRate = stat.getOrElse(3) { 0 },
-        availableBalance = stat.getOrElse(4) { 0 }
-    )
+        availableBalance = stat.getOrElse(4) { 0 },
+    ),
 )
 
 @Serializable
@@ -209,7 +215,7 @@ data class XboardCommissionRecordData(
     @SerialName("get_amount")
     val getAmount: Int = 0,
     @SerialName("created_at")
-    val createdAt: Long = 0L
+    val createdAt: Long = 0L,
 )
 
 fun XboardCommissionRecordData.toDomain() = CommissionRecord(
@@ -217,5 +223,5 @@ fun XboardCommissionRecordData.toDomain() = CommissionRecord(
     tradeNo = tradeNo,
     orderAmount = orderAmount,
     getAmount = getAmount,
-    createdAt = createdAt
+    createdAt = createdAt,
 )

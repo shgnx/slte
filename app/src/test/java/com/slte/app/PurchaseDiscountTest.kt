@@ -4,8 +4,10 @@ import com.slte.app.ui.screen.plans.computeCouponDiscount
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
+/**
+ * 优惠券折扣计算测试：百分比/固定金额、负值钳制与未知类型回退。
+ */
 class PurchaseDiscountTest {
-
     @Test
     fun `百分比折扣按原价计算`() {
         assertEquals(60, computeCouponDiscount(type = 2, value = 50, priceCents = 120))

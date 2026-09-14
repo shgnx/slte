@@ -15,16 +15,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -37,19 +33,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slte.app.R
 import com.slte.app.domain.model.Notice
 import com.slte.app.ui.component.EmptyState
-import com.slte.app.ui.component.RichText
+import com.slte.app.ui.component.ErrorState
 import com.slte.app.ui.component.LottieLoadingIcon
+import com.slte.app.ui.component.RichText
+import com.slte.app.ui.component.SltePullRefresh
 import com.slte.app.ui.component.SlteScaffold
+import com.slte.app.ui.component.SlteSheet
+import com.slte.app.ui.component.ToastTip
 import com.slte.app.ui.theme.SlteColors
+import com.slte.app.ui.theme.SlteIcons
 import com.slte.app.ui.theme.SlteShapes
-import com.slte.app.ui.theme.TextSizes
+import com.slte.app.ui.theme.SlteType
 import com.slte.app.utils.Dimens
 import com.slte.app.utils.FormatUtils
 
@@ -62,35 +62,46 @@ import com.slte.app.utils.FormatUtils
 @Composable
 fun NoticeScreen(
     onBack: () -> Unit,
-    viewModel: NoticeViewModel = hiltViewModel()
+    viewModel: NoticeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedNotice by remember { mutableStateOf<Notice?>(null) }
 
+    ToastTip(
+        messageRes = uiState.toastRes,
+        onDismiss = viewModel::clearToast,
+    )
+
     SlteScaffold(
         title = stringResource(R.string.notice_title),
-        onBack = onBack
+        onBack = onBack,
     ) { innerPadding ->
-        when {
-            uiState.isLoading -> {
-                LoadingContent(modifier = Modifier.padding(innerPadding))
-            }
-            uiState.errorMessageRes != null -> {
-                ErrorContent(
-                    message = stringResource(uiState.errorMessageRes!!),
-                    onRetry = viewModel::loadNotices,
-                    modifier = Modifier.padding(innerPadding)
-                )
-            }
-            uiState.notices.isEmpty() -> {
-                EmptyContent(modifier = Modifier.padding(innerPadding))
-            }
-            else -> {
-                NoticeList(
-                    notices = uiState.notices,
-                    onClick = { selectedNotice = it },
-                    modifier = Modifier.padding(innerPadding)
-                )
+        if (uiState.isLoading) {
+            LoadingContent(modifier = Modifier.padding(innerPadding))
+        } else {
+            SltePullRefresh(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = viewModel::refresh,
+                modifier = Modifier.padding(innerPadding),
+            ) {
+                when {
+                    uiState.errorMessageRes != null ->
+                        PullRefreshScrollable {
+                            ErrorState(
+                                message = stringResource(uiState.errorMessageRes!!),
+                                onRetry = viewModel::loadNotices,
+                            )
+                        }
+                    uiState.notices.isEmpty() ->
+                        PullRefreshScrollable {
+                            EmptyContent()
+                        }
+                    else ->
+                        NoticeList(
+                            notices = uiState.notices,
+                            onClick = { selectedNotice = it },
+                        )
+                }
             }
         }
     }
@@ -98,7 +109,7 @@ fun NoticeScreen(
     selectedNotice?.let { notice ->
         NoticeDetailSheet(
             notice = notice,
-            onDismiss = { selectedNotice = null }
+            onDismiss = { selectedNotice = null },
         )
     }
 }
@@ -107,21 +118,22 @@ fun NoticeScreen(
 private fun NoticeList(
     notices: List<Notice>,
     onClick: (Notice) -> Unit,
-    modifier: Modifier = Modifier
 ) {
     LazyColumn(
-        modifier = modifier
+        modifier =
+        Modifier
             .fillMaxSize()
             .padding(horizontal = Dimens.dashboardScreenPaddingH),
-        verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            vertical = Dimens.spacingLg
-        )
+        verticalArrangement = Arrangement.spacedBy(Dimens.gap.md),
+        contentPadding =
+        androidx.compose.foundation.layout.PaddingValues(
+            vertical = Dimens.gap.lg,
+        ),
     ) {
         items(notices.distinctBy { it.id }, key = { it.id }) { notice ->
             NoticeCard(
                 notice = notice,
-                onClick = { onClick(notice) }
+                onClick = { onClick(notice) },
             )
         }
     }
@@ -136,55 +148,57 @@ private fun NoticeList(
 @Composable
 private fun NoticeCard(
     notice: Notice,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = SlteShapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+        colors =
+        CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = Dimens.cardElevation),
         onClick = {
             haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
             onClick()
-        }
+        },
     ) {
         Column(
-            modifier = Modifier
+            modifier =
+            Modifier
                 .fillMaxWidth()
                 .padding(
-                    horizontal = Dimens.noticeCardPaddingH,
-                    vertical = Dimens.noticeCardPaddingV
-                )
+                    horizontal = Dimens.gap.lg,
+                    vertical = Dimens.gap.lg,
+                ),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = notice.title,
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = TextSizes.actionTitle,
+                    style = SlteType.title,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
-                Spacer(modifier = Modifier.width(Dimens.spacingSm))
+                Spacer(modifier = Modifier.width(Dimens.gap.sm))
                 Icon(
-                    imageVector = Icons.Rounded.ChevronRight,
+                    imageVector = SlteIcons.ChevronRight,
                     contentDescription = null,
-                    modifier = Modifier.size(Dimens.dashboardChevronSize),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    modifier = Modifier.size(Dimens.icon.md),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
             if (notice.tags.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(Dimens.spacingSm))
+                Spacer(modifier = Modifier.height(Dimens.gap.sm))
                 FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(Dimens.noticeTagSpacing)
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.noticeTagSpacing),
                 ) {
                     notice.tags.forEach { tag ->
                         NoticeTag(text = tag)
@@ -192,25 +206,26 @@ private fun NoticeCard(
                 }
             }
 
-            val plainBody = remember(notice.body) {
-                notice.body.replace(Regex("<[^>]*>"), "").trim()
-            }
+            val plainBody =
+                remember(notice.body) {
+                    notice.body.replace(Regex("<[^>]*>"), "").trim()
+                }
             if (plainBody.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(Dimens.spacingSm))
+                Spacer(modifier = Modifier.height(Dimens.gap.sm))
                 Text(
                     text = plainBody,
-                    fontSize = TextSizes.actionSubtitle,
+                    style = SlteType.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = Dimens.noticeBodyMaxLines,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
 
-            Spacer(modifier = Modifier.height(Dimens.spacingSm))
+            Spacer(modifier = Modifier.height(Dimens.gap.sm))
             Text(
                 text = FormatUtils.formatDate(notice.createdAt),
-                fontSize = TextSizes.dashboardListDesc,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = Dimens.noticeTimeAlpha)
+                style = SlteType.label,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = Dimens.noticeTimeAlpha),
             )
         }
     }
@@ -220,17 +235,18 @@ private fun NoticeCard(
 private fun NoticeTag(text: String) {
     Surface(
         shape = SlteShapes.small,
-        color = SlteColors.current.iconBlueBg
+        color = SlteColors.current.accentInteractiveBg,
     ) {
         Text(
             text = text,
-            fontSize = TextSizes.dashboardUsageBadge,
+            style = SlteType.caption,
             fontWeight = FontWeight.Medium,
-            color = SlteColors.current.iconBlue,
-            modifier = Modifier.padding(
+            color = SlteColors.current.accentInteractive,
+            modifier =
+            Modifier.padding(
                 horizontal = Dimens.noticeTagPaddingH,
-                vertical = Dimens.spacingXs
-            )
+                vertical = Dimens.gap.xs,
+            ),
         )
     }
 }
@@ -245,55 +261,48 @@ private fun NoticeTag(text: String) {
 @Composable
 private fun NoticeDetailSheet(
     notice: Notice,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = Dimens.cardElevation
+    SlteSheet(
+        onDismiss = onDismiss,
+        title = notice.title,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = Dimens.noticeSheetPaddingH,
-                    vertical = Dimens.noticeSheetPaddingV
-                )
-        ) {
-            Text(
-                text = notice.title,
-                fontSize = TextSizes.sheetTitle,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
-
-            if (notice.tags.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(Dimens.spacingSm))
-                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.noticeTagSpacing)) {
-                    notice.tags.forEach { tag -> NoticeTag(text = tag) }
-                }
+        if (notice.tags.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(Dimens.gap.sm))
+            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.noticeTagSpacing)) {
+                notice.tags.forEach { tag -> NoticeTag(text = tag) }
             }
+        }
 
-            Spacer(modifier = Modifier.height(Dimens.spacingXs))
-            Text(
-                text = FormatUtils.formatDate(notice.createdAt),
-                fontSize = TextSizes.dashboardListDesc,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = Dimens.noticeTimeAlpha)
-            )
+        Spacer(modifier = Modifier.height(Dimens.gap.xs))
+        Text(
+            text = FormatUtils.formatDate(notice.createdAt),
+            style = SlteType.label,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = Dimens.noticeTimeAlpha),
+        )
 
-            Spacer(modifier = Modifier.height(Dimens.spacingMd))
+        Spacer(modifier = Modifier.height(Dimens.gap.md))
 
-            RichText(
-                text = notice.body,
-                modifier = Modifier.fillMaxWidth()
-            )
+        RichText(
+            text = notice.body,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
 
-            Spacer(modifier = Modifier.height(Dimens.noticeSheetContentPaddingV))
+/** 空态/错误态的滚动容器：无列表内容时下拉手势依然可用（LazyColumn 提供嵌套滚动） */
+@Composable
+private fun PullRefreshScrollable(content: @Composable () -> Unit) {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        item {
+            Box(
+                modifier = Modifier.fillParentMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                content()
+            }
         }
     }
 }
@@ -302,43 +311,9 @@ private fun NoticeDetailSheet(
 private fun LoadingContent(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
-        LottieLoadingIcon(modifier = Modifier.size(Dimens.loadingIndicatorSize))
-    }
-}
-
-@Composable
-private fun ErrorContent(
-    message: String,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-    Column(
-        modifier = modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.ErrorOutline,
-            contentDescription = stringResource(R.string.notice_error),
-            modifier = Modifier.size(Dimens.errorIconSize),
-            tint = SlteColors.current.statusDanger
-        )
-        Spacer(modifier = Modifier.height(Dimens.spacingMd))
-        Text(
-            text = message,
-            fontSize = TextSizes.actionSubtitle,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(Dimens.spacingLg))
-        FilledTonalButton(onClick = {
-            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-            onRetry()
-        }) {
-            Text(text = stringResource(R.string.notice_retry))
-        }
+        LottieLoadingIcon(modifier = Modifier.size(Dimens.icon.lg))
     }
 }
 
@@ -346,6 +321,6 @@ private fun ErrorContent(
 private fun EmptyContent(modifier: Modifier = Modifier) {
     EmptyState(
         title = stringResource(R.string.notice_empty),
-        modifier = modifier
+        modifier = modifier,
     )
 }

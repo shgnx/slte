@@ -5,27 +5,30 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/**
+ * 远程配置缓存测试：序列化往返字段完整、损坏回退与新鲜度判定。
+ */
 class ConfigCacheTest {
-
     private val json = Json { ignoreUnknownKeys = true }
 
     @Test
     fun `缓存条目序列化往返保持字段完整`() {
-        val cached = CachedConfig(
-            config = RemoteConfigData(
-                apiBaseUrl = "https://api.example.com",
-                apiBaseUrls = listOf("https://api.example.com"),
-                directDomains = listOf("example.com")
-            ),
-            version = "1.2",
-            fetchedAt = 12345L,
-            sourceUrl = "https://cfg.example.com/config.json",
-            etag = "\"abc123\""
-        )
+        val cached =
+            CachedConfig(
+                config =
+                RemoteConfigData(
+                    apiBaseUrl = "https://api.example.com",
+                    apiBaseUrls = listOf("https://api.example.com"),
+                    directDomains = listOf("example.com"),
+                ),
+                version = "1.2",
+                fetchedAt = 12345L,
+                sourceUrl = "https://cfg.example.com/config.json",
+                etag = "\"abc123\"",
+            )
         val raw = json.encodeToString(CachedConfig.serializer(), cached)
         val decoded = json.decodeFromString(CachedConfig.serializer(), raw)
         assertEquals(cached, decoded)
-        // meta 与配置本体均完整保留
         assertEquals("1.2", decoded.version)
         assertEquals(12345L, decoded.fetchedAt)
         assertEquals("https://cfg.example.com/config.json", decoded.sourceUrl)

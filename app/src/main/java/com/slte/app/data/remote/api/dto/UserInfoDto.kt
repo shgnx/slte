@@ -18,5 +18,5 @@ data class UserInfoDto(
     val expiredAt: Long = 0L,
     val transferEnable: Long = 0L,
     val remindExpire: Int = 0,
-    val remindTraffic: Int = 0
+    val remindTraffic: Int = 0,
 )

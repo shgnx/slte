@@ -44,7 +44,10 @@
 
     <!-- Plan card -->
     <string name="plan_status_expired">Expired</string>
-    <string name="plan_expire_days_label">%d days left</string>
+    <plurals name="plan_expire_days_label">
+        <item quantity="one">%d day left</item>
+        <item quantity="other">%d days left</item>
+    </plurals>
     <string name="plan_expire_date_label">Expires %1$s</string>
     <string name="plan_expired_today">Expires today</string>
     <string name="plan_no_expiry">No expiry</string>
@@ -74,8 +77,13 @@
     <string name="dashboard_usage_title">Usage</string>
     <string name="dashboard_usage_valid">Valid</string>
     <string name="dashboard_expiry">Expiry</string>
-    <string name="dashboard_days">%d days</string>
+    <plurals name="dashboard_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
     <string name="dashboard_proxy_rule">Rule</string>
+    <string name="dashboard_proxy_direct">Direct</string>
+    <string name="dashboard_proxy_script">Script</string>
     <string name="dashboard_proxy_global">Global</string>
     <string name="proxy_rule_desc">Route by rules</string>
     <string name="proxy_global_desc">Route all via proxy</string>
@@ -97,11 +105,11 @@
     <string name="server_timeout">Timeout</string>
 
     <!-- Invite -->
-    <string name="invite_title">Invite</string>
-    <string name="currency_symbol">¥</string>
-    <string name="invite_stat_registered">Registered users</string>
-    <string name="invite_stat_commission_rate">Commission rate</string>
-    <string name="invite_stat_total">Total commission</string>
+    <string name="invite_title">Referral</string>
+    <string name="currency_symbol">CNY ¥</string>
+    <string name="invite_stat_registered">Invited</string>
+    <string name="invite_stat_commission_rate">Rate</string>
+    <string name="invite_stat_total">Earned</string>
     <string name="invite_stat_pending">Pending</string>
     <string name="invite_stat_available">Withdrawable</string>
     <string name="invite_code_title">Invite code</string>
@@ -111,27 +119,32 @@
     <string name="invite_code_empty">No invite code</string>
     <string name="invite_transfer">Transfer</string>
     <string name="invite_withdraw">Withdraw</string>
-    <string name="invite_transfer_title">Transfer to balance</string>
-    <string name="invite_transfer_amount_hint">Amount (CNY)</string>
-    <string name="invite_transfer_confirm">Confirm transfer</string>
-    <string name="invite_transfer_available">Transferable</string>
-    <string name="invite_transfer_all">All</string>
-    <string name="invite_withdraw_title">Withdraw</string>
+    <string name="invite_transfer_title">Transfer commission</string>
+    <string name="invite_transfer_amount_hint">Amount to transfer</string>
+    <string name="invite_transfer_confirm">Confirm</string>
+    <string name="invite_transfer_available">Current commission balance</string>
+    <string name="invite_transfer_subtitle">Balance usable only in %1$s</string>
+    <string name="invite_withdraw_method_hint">Select method</string>
+    <string name="invite_withdraw_account_label">Withdrawal account</string>
+    <string name="invite_withdraw_methods_loading">Loading…</string>
+    <string name="invite_withdraw_methods_failed">Failed to load methods, tap to retry</string>
+    <string name="invite_withdraw_title">Request withdrawal</string>
+    <string name="invite_withdraw_subtitle">Please verify your account. Arrives within 72 hours.</string>
+    <string name="server_special_node">Special node</string>
     <string name="invite_withdraw_method">Method</string>
     <string name="invite_withdraw_account_hint">Account</string>
     <string name="invite_withdraw_confirm">Confirm</string>
-    <string name="invite_withdraw_available">Withdrawable</string>
-    <string-array name="invite_withdraw_methods">
-        <item>Alipay</item>
-        <item>USDT</item>
-    </string-array>
+    <string name="invite_withdraw_methods_empty">No methods available</string>
     <string name="invite_records_title">Commission records</string>
     <string name="invite_records_empty">No records</string>
     <string name="invite_record_amount">+¥%s</string>
     <string name="invite_record_amount_label">Order amount ¥%s</string>
     <string name="invite_record_order">Order %s</string>
     <string name="invite_code_pv">PV %d</string>
-    <string name="invite_users">%d users</string>
+    <plurals name="invite_users">
+        <item quantity="one">%d user</item>
+        <item quantity="other">%d users</item>
+    </plurals>
     <string name="invite_rate">%d%%</string>
     <string name="invite_success_transfer">Transfer successful</string>
     <string name="invite_success_withdraw">Withdrawal submitted</string>
@@ -145,6 +158,7 @@
     <string name="notice_empty">No notices</string>
     <string name="notice_error">Failed to load</string>
     <string name="notice_retry">Retry</string>
+    <string name="notice_refresh_failed">Refresh failed, please try again</string>
 
     <!-- Profile -->
     <string name="profile_title">Profile</string>
@@ -168,8 +182,9 @@
     <string name="about_log_share_failed">Couldn\'t share the log</string>
 
     <!-- Update (检查更新) -->
-    <string name="update_title">New version</string>
-    <string name="update_force_title">Update required</string>
+    <string name="update_force_title">Available after update</string>
+    <string name="update_title">New version found</string>
+    <string name="update_version_label">New version %1$s</string>
     <string name="update_now">Update now</string>
     <string name="update_later">Later</string>
     <string name="update_changelog_title_default">Changelog</string>
@@ -179,6 +194,7 @@
 
     <string name="profile_logout">Log out</string>
     <string name="logout_confirm_message">Log out of this account?</string>
+    <string name="session_expired_relogin">Your session has expired. Please log in again.</string>
 
     <!-- Settings (其他设置) -->
     <string name="settings_title">Settings</string>
@@ -234,7 +250,6 @@
     <string name="purchase_coupon_discount">Coupon discount</string>
     <string name="purchase_coupon_verify_first">Verify coupon first</string>
     <string name="error_coupon_invalid">Invalid or expired coupon</string>
-    <string name="dialog_confirm">OK</string>
     <string name="purchase_confirm_order">Confirm order</string>
     <string name="purchase_warning_title">Warning</string>
     <string name="purchase_warning_message">New plan replaces current subscription.</string>
@@ -243,7 +258,7 @@
     <string name="purchase_order_info">Order details</string>
     <string name="purchase_product">Product</string>
     <string name="purchase_product_price">Plan price</string>
-    <string name="purchase_balance">Balance used</string>
+    <string name="purchase_balance">Balance</string>
     <string name="purchase_surplus">Trade-in credit</string>
     <string name="purchase_refund">Refunded to balance</string>
     <string name="purchase_handling">Fee</string>
@@ -276,6 +291,7 @@
     <string name="period_reset">Traffic reset</string>
 
     <!-- API error messages -->
+    <string name="api_error_bad_response">Unexpected server response</string>
     <string name="api_error_empty_data">Empty server response</string>
     <string name="api_error_register_config">Failed to get sign-up config</string>
     <string name="api_error_user_info">Failed to get user info</string>
@@ -294,7 +310,6 @@
     <!-- Language（语言选项标签使用各语言自身名称，不翻译，便于后续新增语言） -->
     <string name="settings_language">Language</string>
     <string name="language_follow_system">Follow system</string>
-    <string name="language_follow_system_desc">Use system language</string>
     <string name="language_simplified">简体中文</string>
     <string name="language_traditional">繁體中文</string>
     <string name="language_english">English</string>

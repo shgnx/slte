@@ -3,12 +3,16 @@ package com.slte.app.kernel
 import com.slte.app.utils.AppLog
 
 /**
- * 订阅 YAML 清洗器：落盘前清零入站端口、清空 ui-subtitle-pattern、注入直连规则与 fake-ip 豁免。
- * 同时补全测速配置（组 url/timeout、provider health-check），保证缺省订阅也走统一测速 URL 与超时。
+ * 订阅 YAML 清洗器：落盘前清零入站端口、中和内核控制面、清空 ui-subtitle-pattern、
+ * 注入直连规则与 fake-ip 豁免。同时补全测速配置（组 url/timeout、provider health-check），
+ * 保证缺省订阅也走统一测速 URL 与超时。
+ *
  * 行级编辑不改变 YAML 结构；结构异常时安全跳过，绝不抛异常。
+ *
+ * 已知未覆盖：`dns.nameserver` / `dns.nameserver-policy` 保持订阅原样（服务商常按自己节点
+ * 调优解析，强行改写会破坏可用性）；`proxy-providers` 内的远程 URL 也不做白名单限制。
  */
 object SubscriptionSanitizer {
-
     /** 测速 URL：官方内核默认（HTTPS），与主流客户端一致；明文 HTTP 探活易被节点/落地限制导致超时 */
     private const val HEALTH_CHECK_URL = "https://www.gstatic.com/generate_204"
 
@@ -21,8 +25,37 @@ object SubscriptionSanitizer {
     /** 需清零的顶层端口键（0 = 不监听） */
     private val ZEROED_PORT_KEYS = setOf("port", "socks-port", "mixed-port", "redir-port", "tproxy-port")
 
-    /** 匹配顶层 "key: value" 行 */
-    private val TOP_LEVEL_KEY_VALUE = Regex("^(port|socks-port|mixed-port|redir-port|tproxy-port|allow-lan|bind-address)\\s*:\\s*.*$")
+    /**
+     * 需清空的顶层标量键：订阅一旦自带这些键，就能把内核控制 API / 面板 UI / 远程外部资源开放出去。
+     * 只清零监听端口是不够的——两行 `external-controller: 0.0.0.0:9090` + `secret: ""`
+     * 即可把 mihomo 的 REST API 暴露到局域网（可改节点、读全部配置与流量）。
+     */
+    private val NEUTRALIZED_SCALAR_KEYS =
+        setOf(
+            "external-controller",
+            "external-controller-tls",
+            "external-controller-unix",
+            "external-controller-pipe",
+            "external-ui",
+            "external-ui-name",
+            "external-ui-url",
+            "secret",
+        )
+
+    /** 需整体删除的顶层块键：订阅无权定义，且会被内核真实消费（脚本执行 / hosts 劫持 / 旧兼容层） */
+    private val DROPPED_BLOCK_KEYS = setOf("hosts", "script", "scripting", "web")
+
+    /** 需强制 `enable: false` 的顶层块键：tun 由本应用经内核 override 下发，不接受订阅指定 */
+    private val FORCED_OFF_BLOCK_KEYS = setOf("tun")
+
+    /** 匹配顶层 `key:` 块头（有键无值） */
+    private val TOP_LEVEL_BLOCK_HEAD = Regex("^([A-Za-z0-9_-]+)\\s*:\\s*$")
+
+    /** 匹配顶层 `key: {...}` flow 风格块（有键且同行有值） */
+    private val TOP_LEVEL_FLOW_HEAD = Regex("^([A-Za-z0-9_-]+)\\s*:\\s*\\{")
+
+    /** 匹配顶层 "key: value" 行（键允许带双引号，YAML 合法写法） */
+    private val TOP_LEVEL_KEY_VALUE = Regex("^(\"?)(port|socks-port|mixed-port|redir-port|tproxy-port|allow-lan|bind-address)(\"?)\\s*:\\s*.*$")
 
     /** 匹配任意缩进的 ui-subtitle-pattern 行 */
     private val SUBTITLE_PATTERN_LINE = Regex("^(\\s*ui-subtitle-pattern\\s*:\\s*).*$")
@@ -52,23 +85,36 @@ object SubscriptionSanitizer {
      * 清洗订阅 YAML。
      *
      * @param domains 需要直连的自家域名列表（如 example.com），全部注入直连规则与 fake-ip 豁免
-     * @return 清洗后的 YAML；异常时返回原文，不阻断订阅导入（行编辑出错时宁可保留原配置也不破坏订阅）。
+     * @return 清洗后的 YAML。各清洗步骤逐级 fail-safe，单步出错只跳过该步（记录 W），
+     * 保留其余已完成的清洗结果，不中断订阅导入。
      */
-    fun sanitize(text: String, domains: List<String>): String {
+    fun sanitize(
+        text: String,
+        domains: List<String>,
+    ): String {
         if (text.isBlank()) return text
-        return try {
-            val lines = text.lines().toMutableList()
-            zeroTopLevelPorts(lines)
-            clearSubtitlePattern(lines)
-            injectHealthCheckConfig(lines)
-            val validDomains = domains.filter { it.isNotBlank() }
-            validDomains.forEach { injectDirectRule(lines, it) }
-            validDomains.forEach { injectFakeIpFilter(lines, it) }
-            lines.joinToString("\n")
-        } catch (_: Exception) {
-            AppLog.w("SLTE-Sanitizer", "sanitize 异常回退原文，内核补丁链兜底")
-            text
+        val lines = text.lines().toMutableList()
+        // 逐步骤 fail-safe：单步出错只跳过该步，避免整条管线静默退回未清洗原文
+        failSafe("zeroTopLevelPorts") { zeroTopLevelPorts(lines) }
+        failSafe("neutralizeControlSurface") { neutralizeControlSurface(lines) }
+        failSafe("clearSubtitlePattern") { clearSubtitlePattern(lines) }
+        failSafe("injectHealthCheckConfig") { injectHealthCheckConfig(lines) }
+        domains.filter { it.isNotBlank() }.forEach { domain ->
+            failSafe("injectDirectRule($domain)") { injectDirectRule(lines, domain) }
+            failSafe("injectFakeIpFilter($domain)") { injectFakeIpFilter(lines, domain) }
         }
+        return lines.joinToString("\n")
+    }
+
+    /** 执行单个清洗步骤；内部异常记录 W 后忽略，保留已变更的行继续后续步骤 */
+    private fun failSafe(
+        step: String,
+        block: () -> Unit,
+    ) = try {
+        block()
+    } catch (e: Throwable) {
+        // 捕 Throwable 兑现"清洗绝不外抛"的契约（含 Error），避免单个步骤击穿整条管线
+        AppLog.w("SLTE-Sanitizer", "清洗步骤 $step 出错，跳过该步: ${e.javaClass.simpleName}: ${e.message}")
     }
 
     /** 补全测速配置：组缺 url/timeout 时注入，provider 缺 health-check 时注入（均幂等） */
@@ -114,8 +160,9 @@ object SubscriptionSanitizer {
             for ((key, value) in listOf("url" to HEALTH_CHECK_URL, "timeout" to HEALTH_CHECK_TIMEOUT_MS.toString())) {
                 when (blockKeyValue(lines, i, blockEnd, keyIndent, key)) {
                     KeyState.MISSING -> additions.add(keyIndent + "$key: $value")
-                    KeyState.EMPTY -> blockKeyLineIndex(lines, i, blockEnd, keyIndent, key)
-                        ?.let { replacements.add(it to keyIndent + "$key: $value") }
+                    KeyState.EMPTY ->
+                        blockKeyLineIndex(lines, i, blockEnd, keyIndent, key)
+                            ?.let { replacements.add(it to keyIndent + "$key: $value") }
                     KeyState.PRESENT -> Unit
                 }
             }
@@ -169,19 +216,21 @@ object SubscriptionSanitizer {
             // 内联 health-check（行内非纯键，如 flow 风格）视为已配置，避免重复键
             if (lines.subList(i, blockEnd).any {
                     it.contains("health-check:") && it.trim() != "health-check:"
-                }) {
+                }
+            ) {
                 i = blockEnd
                 continue
             }
             pending.add(
-                i + 1 to listOf(
-                    childKeyIndent + "health-check:",
-                    childKeyIndent + "  enable: true",
-                    childKeyIndent + "  url: $HEALTH_CHECK_URL",
-                    childKeyIndent + "  interval: 300",
-                    childKeyIndent + "  timeout: $HEALTH_CHECK_TIMEOUT_MS",
-                    childKeyIndent + "  lazy: true"
-                )
+                i + 1 to
+                    listOf(
+                        childKeyIndent + "health-check:",
+                        childKeyIndent + "  enable: true",
+                        childKeyIndent + "  url: $HEALTH_CHECK_URL",
+                        childKeyIndent + "  interval: 300",
+                        childKeyIndent + "  timeout: $HEALTH_CHECK_TIMEOUT_MS",
+                        childKeyIndent + "  lazy: true",
+                    ),
             )
             i = blockEnd
         }
@@ -191,7 +240,11 @@ object SubscriptionSanitizer {
     }
 
     /** 块结束索引：下一个同层或更浅缩进的非空行；找不到返回行尾 */
-    private fun blockEndIndex(lines: List<String>, start: Int, itemIndent: String): Int {
+    private fun blockEndIndex(
+        lines: List<String>,
+        start: Int,
+        itemIndent: String,
+    ): Int {
         for (i in start + 1 until lines.size) {
             val line = lines[i]
             if (line.isBlank() || line.trimStart().startsWith("#")) continue
@@ -207,7 +260,7 @@ object SubscriptionSanitizer {
         start: Int,
         end: Int,
         keyIndent: String,
-        key: String
+        key: String,
     ): Boolean = blockKeyValue(lines, start, end, keyIndent, key) != KeyState.MISSING
 
     /** 块键存在状态：缺失 / 存在但值为空 / 存在且有值 */
@@ -216,7 +269,7 @@ object SubscriptionSanitizer {
         start: Int,
         end: Int,
         keyIndent: String,
-        key: String
+        key: String,
     ): KeyState {
         for (i in start + 1 until end) {
             val line = lines[i]
@@ -238,7 +291,7 @@ object SubscriptionSanitizer {
         start: Int,
         end: Int,
         keyIndent: String,
-        key: String
+        key: String,
     ): Int? {
         for (i in start + 1 until end) {
             val line = lines[i]
@@ -253,7 +306,12 @@ object SubscriptionSanitizer {
     }
 
     /** 组类型：块内 type 键的值（去引号小写）；未找到返回空串 */
-    private fun groupType(lines: List<String>, start: Int, end: Int, keyIndent: String): String {
+    private fun groupType(
+        lines: List<String>,
+        start: Int,
+        end: Int,
+        keyIndent: String,
+    ): String {
         for (i in start + 1 until end) {
             val line = lines[i]
             if (line.isBlank() || line.trimStart().startsWith("#")) continue
@@ -262,13 +320,23 @@ object SubscriptionSanitizer {
             if (indent != keyIndent) continue
             val m = BLOCK_KEY.find(line) ?: continue
             if (m.groupValues[2] != "type") continue
-            return line.substringAfter(':').trim().trim('\'').trim('"').lowercase()
+            return line
+                .substringAfter(':')
+                .trim()
+                .trim('\'')
+                .trim('"')
+                .lowercase()
         }
         return ""
     }
 
     /** 块内子键缩进：首个非空子键行的前导空白；空块返回 null */
-    private fun childKeyIndent(lines: List<String>, start: Int, end: Int, parentIndent: String): String? {
+    private fun childKeyIndent(
+        lines: List<String>,
+        start: Int,
+        end: Int,
+        parentIndent: String,
+    ): String? {
         for (i in start + 1 until end) {
             val line = lines[i]
             if (line.isBlank() || line.trimStart().startsWith("#")) continue
@@ -285,12 +353,13 @@ object SubscriptionSanitizer {
             val line = lines[i]
             if (line.isEmpty() || line[0] == ' ' || line[0] == '\t') continue
             val m = TOP_LEVEL_KEY_VALUE.matchEntire(line) ?: continue
-            lines[i] = when (m.groupValues[1]) {
-                "allow-lan" -> "allow-lan: false"
-                "bind-address" -> "bind-address: \"\""
-                in ZEROED_PORT_KEYS -> "${m.groupValues[1]}: 0"
-                else -> line
-            }
+            lines[i] =
+                when (m.groupValues[2]) {
+                    "allow-lan" -> "allow-lan: false"
+                    "bind-address" -> "bind-address: \"\""
+                    in ZEROED_PORT_KEYS -> "${m.groupValues[2]}: 0"
+                    else -> line
+                }
         }
     }
 
@@ -302,10 +371,140 @@ object SubscriptionSanitizer {
         }
     }
 
+    /**
+     * 中和订阅自带的内核控制面与高风险块（幂等）。
+     *
+     * 遍历顺序有讲究：先删整块（会改变行号），再逐行改写，最后处理 authentication。
+     * 全部只作用于顶层（第 0 列）键，`proxy-providers` 等同名子键不受影响。
+     */
+    private fun neutralizeControlSurface(lines: MutableList<String>) {
+        dropTopLevelBlocks(lines, DROPPED_BLOCK_KEYS)
+        forceOffTopLevelSwitches(lines, FORCED_OFF_BLOCK_KEYS)
+        for (i in lines.indices) {
+            val line = lines[i]
+            if (line.isEmpty() || line[0] == ' ' || line[0] == '\t') continue
+            val key = normalizeKey(line.substringBefore(':'))
+            if (key in NEUTRALIZED_SCALAR_KEYS) lines[i] = "$key: \"\""
+        }
+        clearAuthentication(lines)
+    }
+
+    /** 删除指定顶层块（块头及其缩进子行）与 flow 风格单行；同名子键（如 provider 下的 hosts）不受影响 */
+    private fun dropTopLevelBlocks(
+        lines: MutableList<String>,
+        keys: Set<String>,
+    ) {
+        var i = 0
+        while (i < lines.size) {
+            val line = lines[i]
+            val key = if (line.isNotEmpty() && line[0] != ' ' && line[0] != '\t') topLevelKey(line) else null
+            if (key != null && key in keys) {
+                // 块头（无值）连同子行一起删；flow/行内值只删本行
+                val end = if (TOP_LEVEL_BLOCK_HEAD.matches(line)) blockEndIndex(lines, i, "") else i + 1
+                lines.subList(i, end).clear()
+                continue
+            }
+            i++
+        }
+    }
+
+    /**
+     * 在指定顶层块内把 enable 置 false（幂等）。
+     *
+     * 缩进一律跟随块内已有子键：[childKeyIndent] 取到 4 空格就用 4 空格——
+     * 固定写 2 空格会在 4 空格缩进的块里造成混合缩进、直接产出非法 YAML。
+     */
+    private fun forceOffTopLevelSwitches(
+        lines: MutableList<String>,
+        keys: Set<String>,
+    ) {
+        var i = 0
+        while (i < lines.size) {
+            val line = lines[i]
+            val key = if (line.isNotEmpty() && line[0] != ' ' && line[0] != '\t') topLevelKey(line) else null
+            if (key == null || key !in keys) {
+                i++
+                continue
+            }
+            // flow 风格：整行重写，避免留下 enable: true
+            if (TOP_LEVEL_FLOW_HEAD.containsMatchIn(line)) {
+                lines[i] = "$key: {enable: false}"
+                i++
+                continue
+            }
+            if (!TOP_LEVEL_BLOCK_HEAD.matches(line)) {
+                // 行内标量（如 `tun: false`）：已关闭，无需处理
+                i++
+                continue
+            }
+            val end = blockEndIndex(lines, i, "")
+            val childIndent = childKeyIndent(lines, i, end, "")
+            if (childIndent == null) {
+                lines.add(i + 1, "  enable: false")
+            } else {
+                val enableIndex = blockKeyLineIndex(lines, i, end, childIndent, "enable")
+                if (enableIndex != null) {
+                    lines[enableIndex] = "${childIndent}enable: false"
+                } else {
+                    lines.add(i + 1, "${childIndent}enable: false")
+                }
+            }
+            i++
+        }
+    }
+
+    /** 顶层行的键名（不含值）；非顶层行返回 null。带引号键（如 "mixed-port": 7890）归一化后返回 */
+    private fun topLevelKey(line: String): String? {
+        val idx = line.indexOf(':')
+        if (idx <= 0) return null
+        return normalizeKey(line.substring(0, idx)).ifEmpty { null }
+    }
+
+    /** 顶层键名归一化：去掉两侧双引号（YAML 允许带引号键，否则可绕过控制面中和与端口清零） */
+    private fun normalizeKey(raw: String): String {
+        val trimmed = raw.trim()
+        return if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
+            trimmed.substring(1, trimmed.length - 1)
+        } else {
+            trimmed
+        }
+    }
+
+    /** 清空 API 鉴权列表：flow/行内写法原位替换为空列表，块写法整块删除（幂等） */
+    private fun clearAuthentication(lines: MutableList<String>) {
+        var i = 0
+        while (i < lines.size) {
+            val line = lines[i]
+            if (line.isEmpty() || line[0] == ' ' || line[0] == '\t' || normalizeKey(line.substringBefore(':')) != "authentication") {
+                i++
+                continue
+            }
+            if (line.contains('[') || line.substringAfter(':').isNotBlank()) {
+                lines[i] = "authentication: []"
+                i++
+                continue
+            }
+            lines.subList(i, blockEndIndex(lines, i, "")).clear()
+        }
+    }
+
     /** 注入直连规则：插入 rules 块头部，缩进跟随已有条目；flow 风格或缺失时跳过 */
-    private fun injectDirectRule(lines: MutableList<String>, domain: String) {
+    private fun injectDirectRule(
+        lines: MutableList<String>,
+        domain: String,
+    ) {
         val rule = "DOMAIN-SUFFIX,$domain,DIRECT"
-        if (lines.any { it.trim().removePrefix("- ").trim().trim('\'').trim('"') == rule }) return
+        if (lines.any {
+                it
+                    .trim()
+                    .removePrefix("- ")
+                    .trim()
+                    .trim('\'')
+                    .trim('"') == rule
+            }
+        ) {
+            return
+        }
 
         val rulesIndex = lines.indexOfFirst { it.trim() == it && RULES_KEY.matches(it.trim()) }
         if (rulesIndex < 0) return
@@ -317,9 +516,22 @@ object SubscriptionSanitizer {
     }
 
     /** 注入 fake-ip-filter 条目：跟随已有块缩进；缺失时在 dns 块内新建；异常跳过 */
-    private fun injectFakeIpFilter(lines: MutableList<String>, domain: String) {
+    private fun injectFakeIpFilter(
+        lines: MutableList<String>,
+        domain: String,
+    ) {
         val entry = "+.$domain"
-        if (lines.any { it.trim().removePrefix("- ").trim().trim('\'').trim('"') == entry }) return
+        if (lines.any {
+                it
+                    .trim()
+                    .removePrefix("- ")
+                    .trim()
+                    .trim('\'')
+                    .trim('"') == entry
+            }
+        ) {
+            return
+        }
 
         // 内联/flow 形式（行尾非冒号）无法安全合并：跳过注入避免重复键，域名豁免由内核 patchDns 兜底
         if (lines.any { it.trim().startsWith("fake-ip-filter:") && !it.trim().endsWith(":") }) return
@@ -341,7 +553,10 @@ object SubscriptionSanitizer {
     }
 
     /** 块内条目缩进：取键后首个非空、非注释行的前导空白 */
-    private fun blockItemIndent(lines: List<String>, keyIndex: Int): String? {
+    private fun blockItemIndent(
+        lines: List<String>,
+        keyIndex: Int,
+    ): String? {
         for (i in keyIndex + 1 until lines.size) {
             val line = lines[i]
             if (line.isBlank() || line.trimStart().startsWith("#")) continue
@@ -354,7 +569,10 @@ object SubscriptionSanitizer {
     }
 
     /** 块内键缩进：取键后首个非空、非注释行的前导空白 */
-    private fun blockKeyIndent(lines: List<String>, keyIndex: Int): String? {
+    private fun blockKeyIndent(
+        lines: List<String>,
+        keyIndex: Int,
+    ): String? {
         for (i in keyIndex + 1 until lines.size) {
             val line = lines[i]
             if (line.isBlank() || line.trimStart().startsWith("#")) continue
@@ -368,6 +586,6 @@ object SubscriptionSanitizer {
     private enum class KeyState {
         MISSING,
         EMPTY,
-        PRESENT
+        PRESENT,
     }
 }

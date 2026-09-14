@@ -9,13 +9,13 @@ import com.slte.app.domain.model.SubscribeInfo
 import com.slte.app.domain.usecase.DaysUntilExpiryUseCase
 import com.slte.app.utils.ErrorMessages
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * 个人中心页面数据。
@@ -34,13 +34,14 @@ data class ProfileData(
 )
 
 @HiltViewModel
-class ProfileViewModel @Inject constructor(
+class ProfileViewModel
+@Inject
+constructor(
     private val subscribeRepository: SubscribeRepository,
     private val sessionManager: SessionManager,
     private val authRepository: AuthRepository,
     private val expiryUseCase: DaysUntilExpiryUseCase,
 ) : ViewModel() {
-
     private val _data = MutableStateFlow(ProfileData())
     val data: StateFlow<ProfileData> = _data.asStateFlow()
 
@@ -54,9 +55,10 @@ class ProfileViewModel @Inject constructor(
         // 先显示本地缓存：离线也能看到上次的用户信息/订阅信息
         val cachedUser = subscribeRepository.getCachedUserInfo()
         val cachedSubscribe = subscribeRepository.getCachedSubscribeInfo()
-        val email = cachedUser?.email
-            ?: (sessionManager.sessionState.value as? com.slte.app.domain.model.SessionState.LoggedIn)?.user?.email
-            ?: ""
+        val email =
+            cachedUser?.email
+                ?: (sessionManager.sessionState.value as? com.slte.app.domain.model.SessionState.LoggedIn)?.user?.email
+                ?: ""
         if (cachedUser != null || cachedSubscribe != null) {
             _data.update {
                 it.copy(
@@ -64,11 +66,13 @@ class ProfileViewModel @Inject constructor(
                     email = email,
                     balance = cachedUser?.balance ?: "0.00",
                     daysUntilExpired = expiryDays(cachedSubscribe),
-                    isLoading = false
+                    isLoading = false,
                 )
             }
         }
-        loadProfile()
+        // 注意：网络拉取用户信息不在 init 中做——本 VM 会被登录主界面顶部 eager 创建，
+        // 冷启动即请求会造成网络突发且与 Profile 页入口 refresh() 重复。
+        // 真正进入个人中心页时由 ProfileScreen 的入口 LaunchedEffect 触发 refresh()。
     }
 
     fun refresh() {
@@ -99,7 +103,7 @@ class ProfileViewModel @Inject constructor(
                 onSuccess = { user ->
                     _data.update { it.copy(email = user.email, balance = user.balance) }
                 },
-                onFailure = { /* 保留缓存展示 */ }
+                onFailure = { /* 保留缓存展示 */ },
             )
             subscribeResult.await().fold(
                 onSuccess = { info ->
@@ -107,22 +111,21 @@ class ProfileViewModel @Inject constructor(
                         it.copy(
                             subscribeInfo = info,
                             daysUntilExpired = expiryDays(info),
-                            isLoading = false
+                            isLoading = false,
                         )
                     }
                 },
                 onFailure = { throwable ->
                     _data.update { it.copy(isLoading = false) }
                     if (_data.value.subscribeInfo == null) {
-                        _errorMessageRes.value = ErrorMessages.mapSubscribeError(throwable.message)
+                        _errorMessageRes.value = ErrorMessages.forSubscribe(throwable)
                     }
-                }
+                },
             )
             loading = false
         }
     }
 
     /** 到期剩余天数；0/负到期时间视为不限时（null） */
-    private fun expiryDays(info: SubscribeInfo?): Int? =
-        info?.expiredAt?.takeIf { it > 0L }?.let { expiryUseCase(it) }
+    private fun expiryDays(info: SubscribeInfo?): Int? = info?.expiredAt?.takeIf { it > 0L }?.let { expiryUseCase(it) }
 }

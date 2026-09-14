@@ -2,20 +2,19 @@ package com.slte.app.ui.screen.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.slte.app.data.remote.ApiException
-import com.slte.app.domain.model.RegisterConfig
+import com.slte.app.R
 import com.slte.app.data.repository.AuthRepository
+import com.slte.app.domain.model.RegisterConfig
 import com.slte.app.domain.model.SessionState
 import com.slte.app.domain.model.User
-import com.slte.app.R
 import com.slte.app.utils.ErrorMessages
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 sealed interface LoginUiState {
     data class Form(
@@ -25,18 +24,36 @@ sealed interface LoginUiState {
         val rememberMe: Boolean = false,
     ) : LoginUiState
 
-    data class LoggingIn(val form: Form) : LoginUiState
-    data class CheckingRegisterConfig(val form: Form) : LoginUiState
-    data class LoginSuccess(val form: Form, val user: User) : LoginUiState
-    data class RegisterConfigReady(val form: Form, val config: RegisterConfig) : LoginUiState
-    data class Error(val form: Form, val messageRes: Int) : LoginUiState
+    data class LoggingIn(
+        val form: Form,
+    ) : LoginUiState
+
+    data class CheckingRegisterConfig(
+        val form: Form,
+    ) : LoginUiState
+
+    data class LoginSuccess(
+        val form: Form,
+        val user: User,
+    ) : LoginUiState
+
+    data class RegisterConfigReady(
+        val form: Form,
+        val config: RegisterConfig,
+    ) : LoginUiState
+
+    data class Error(
+        val form: Form,
+        val messageRes: Int,
+    ) : LoginUiState
 }
 
 @HiltViewModel
-class LoginViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+class LoginViewModel
+@Inject
+constructor(
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Form())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
@@ -53,20 +70,22 @@ class LoginViewModel @Inject constructor(
     }
 
     private val isLoading: Boolean
-        get() = _uiState.value is LoginUiState.LoggingIn
-                || _uiState.value is LoginUiState.CheckingRegisterConfig
+        get() =
+            _uiState.value is LoginUiState.LoggingIn ||
+                _uiState.value is LoginUiState.CheckingRegisterConfig
 
     /** 启动时检查是否有已保存的账号，有则自动填入邮箱和密码。 */
     private fun loadSavedCredentials() {
         val savedEmail = authRepository.savedEmail()
         if (savedEmail != null) {
             val f = currentForm()
-            _uiState.value = LoginUiState.Form(
-                account = savedEmail,
-                password = authRepository.savedPassword() ?: "",
-                passwordVisible = f.passwordVisible,
-                rememberMe = true,
-            )
+            _uiState.value =
+                LoginUiState.Form(
+                    account = savedEmail,
+                    password = authRepository.savedPassword() ?: "",
+                    passwordVisible = f.passwordVisible,
+                    rememberMe = true,
+                )
         }
     }
 
@@ -109,12 +128,13 @@ class LoginViewModel @Inject constructor(
 
     fun dismissError() {
         val f = currentForm()
-        _uiState.value = LoginUiState.Form(
-            account = f.account,
-            password = f.password,
-            passwordVisible = f.passwordVisible,
-            rememberMe = f.rememberMe,
-        )
+        _uiState.value =
+            LoginUiState.Form(
+                account = f.account,
+                password = f.password,
+                passwordVisible = f.passwordVisible,
+                rememberMe = f.rememberMe,
+            )
     }
 
     fun login() {
@@ -131,30 +151,28 @@ class LoginViewModel @Inject constructor(
 
         _uiState.value = LoginUiState.LoggingIn(f)
         loginJob?.cancel()
-        loginJob = viewModelScope.launch {
-            val f2 = currentForm()
-            val result = authRepository.login(f2.account.trim(), f2.password)
-            result.fold(
-                onSuccess = { user ->
-                    // 记住当前账号（覆盖上一个），不勾选则清除
-                    if (f2.rememberMe) {
-                        authRepository.saveCredentials(f2.account.trim(), f2.password)
-                    } else {
-                        authRepository.clearCredentials()
-                    }
-                    _uiState.value = LoginUiState.LoginSuccess(f2, user)
-                },
-                onFailure = { e ->
-                    val f3 = currentForm()
-                    val resId = if (e is ApiException) {
-                        ErrorMessages.mapLoginError(e.message)
-                    } else {
-                        ErrorMessages.networkError()
-                    }
-                    _uiState.value = LoginUiState.Error(f3, resId)
-                }
-            )
-        }
+        loginJob =
+            viewModelScope.launch {
+                val f2 = currentForm()
+                val result = authRepository.login(f2.account.trim(), f2.password)
+                result.fold(
+                    onSuccess = { user ->
+                        // 记住当前账号（覆盖上一个），不勾选则清除
+                        if (f2.rememberMe) {
+                            authRepository.saveCredentials(f2.account.trim(), f2.password)
+                        } else {
+                            authRepository.clearCredentials()
+                        }
+                        _uiState.value = LoginUiState.LoginSuccess(f2, user)
+                    },
+                    onFailure = { e ->
+                        val f3 = currentForm()
+                        val resId =
+                            ErrorMessages.forLogin(e)
+                        _uiState.value = LoginUiState.Error(f3, resId)
+                    },
+                )
+            }
     }
 
     /**
@@ -168,44 +186,44 @@ class LoginViewModel @Inject constructor(
         val f = currentForm()
         _uiState.value = LoginUiState.CheckingRegisterConfig(f)
         registerConfigJob?.cancel()
-        registerConfigJob = viewModelScope.launch {
-            val f2 = currentForm()
-            val result = authRepository.fetchRegisterConfig()
-            result.fold(
-                onSuccess = { config ->
-                    _uiState.value = LoginUiState.RegisterConfigReady(f2, config)
-                },
-                onFailure = { e ->
-                    val f3 = currentForm()
-                    val resId = if (e is ApiException) {
-                        ErrorMessages.mapRegisterError(e.message)
-                    } else {
-                        ErrorMessages.networkError()
-                    }
-                    _uiState.value = LoginUiState.Error(f3, resId)
-                }
-            )
-        }
+        registerConfigJob =
+            viewModelScope.launch {
+                val f2 = currentForm()
+                val result = authRepository.fetchRegisterConfig()
+                result.fold(
+                    onSuccess = { config ->
+                        _uiState.value = LoginUiState.RegisterConfigReady(f2, config)
+                    },
+                    onFailure = { e ->
+                        val f3 = currentForm()
+                        val resId =
+                            ErrorMessages.forRegister(e)
+                        _uiState.value = LoginUiState.Error(f3, resId)
+                    },
+                )
+            }
     }
 
     fun onNavigatedToRegister() {
         val f = currentForm()
-        _uiState.value = LoginUiState.Form(
-            account = f.account,
-            password = f.password,
-            passwordVisible = f.passwordVisible,
-            rememberMe = f.rememberMe,
-        )
+        _uiState.value =
+            LoginUiState.Form(
+                account = f.account,
+                password = f.password,
+                passwordVisible = f.passwordVisible,
+                rememberMe = f.rememberMe,
+            )
     }
 
     fun onNavigatedToLoginSuccess() {
         val f = currentForm()
-        _uiState.value = LoginUiState.Form(
-            account = f.account,
-            password = f.password,
-            passwordVisible = f.passwordVisible,
-            rememberMe = f.rememberMe,
-        )
+        _uiState.value =
+            LoginUiState.Form(
+                account = f.account,
+                password = f.password,
+                passwordVisible = f.passwordVisible,
+                rememberMe = f.rememberMe,
+            )
     }
 
     /** 取消全屏加载（系统返回/点击遮罩）：取消在途请求并复位表单 */
@@ -213,11 +231,12 @@ class LoginViewModel @Inject constructor(
         loginJob?.cancel()
         registerConfigJob?.cancel()
         val f = currentForm()
-        _uiState.value = LoginUiState.Form(
-            account = f.account,
-            password = f.password,
-            passwordVisible = f.passwordVisible,
-            rememberMe = f.rememberMe
-        )
+        _uiState.value =
+            LoginUiState.Form(
+                account = f.account,
+                password = f.password,
+                passwordVisible = f.passwordVisible,
+                rememberMe = f.rememberMe,
+            )
     }
 }

@@ -4,12 +4,10 @@ import android.content.Context
 import com.slte.app.R
 import java.time.Instant
 import java.time.ZoneId
-import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 /** 数值 → UI 文本格式化 */
 object FormatUtils {
-
     /** 余额（分）→ 元字符串，如 1250 → "12.50" */
     fun balance(balanceCents: Int): String {
         val yuan = balanceCents.toDouble() / 100.0
@@ -59,7 +57,8 @@ object FormatUtils {
     /** 时间戳（秒）→ 日期字符串，如 1735689600 → "2026-01-01" */
     fun formatDate(epochSeconds: Long): String {
         if (epochSeconds <= 0L) return ""
-        return Instant.ofEpochSecond(epochSeconds)
+        return Instant
+            .ofEpochSecond(epochSeconds)
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
             .format(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -68,7 +67,8 @@ object FormatUtils {
     /** 时间戳（秒）→ 点分日期，如 1735689600 → "2026.01.01"（到期展示用） */
     fun formatExpiryDate(epochSeconds: Long): String {
         if (epochSeconds <= 0L) return ""
-        return Instant.ofEpochSecond(epochSeconds)
+        return Instant
+            .ofEpochSecond(epochSeconds)
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
             .format(DateTimeFormatter.ofPattern("yyyy.MM.dd"))
@@ -80,18 +80,22 @@ object FormatUtils {
      * V2Board 后端 period 字段枚举值映射为展示文本：
      * month_price → 月付、quarter_price → 季付、year_price → 年付 等。
      */
-    fun periodLabel(period: String, context: Context): String {
-        val resId = when (period) {
-            "month_price" -> R.string.period_month
-            "quarter_price" -> R.string.period_quarter
-            "half_year_price" -> R.string.period_half_year
-            "year_price" -> R.string.period_year
-            "two_year_price" -> R.string.period_two_year
-            "three_year_price" -> R.string.period_three_year
-            "onetime_price" -> R.string.period_onetime
-            "reset_price" -> R.string.period_reset
-            else -> return period
-        }
+    fun periodLabel(
+        period: String,
+        context: Context,
+    ): String {
+        val resId =
+            when (period) {
+                "month_price" -> R.string.period_month
+                "quarter_price" -> R.string.period_quarter
+                "half_year_price" -> R.string.period_half_year
+                "year_price" -> R.string.period_year
+                "two_year_price" -> R.string.period_two_year
+                "three_year_price" -> R.string.period_three_year
+                "onetime_price" -> R.string.period_onetime
+                "reset_price" -> R.string.period_reset
+                else -> return period
+            }
         return context.getString(resId)
     }
 }

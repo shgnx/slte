@@ -23,7 +23,6 @@ android {
 }
 
 dependencies {
-    compileOnly(project(":kernel-hideapi"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)

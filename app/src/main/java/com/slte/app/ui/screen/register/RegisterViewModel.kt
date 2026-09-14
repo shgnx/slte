@@ -3,19 +3,17 @@ package com.slte.app.ui.screen.register
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slte.app.R
-import com.slte.app.data.remote.ApiException
-import com.slte.app.domain.model.EmailCodePurpose
 import com.slte.app.data.repository.AuthRepository
+import com.slte.app.domain.model.EmailCodePurpose
 import com.slte.app.domain.usecase.CountdownUseCase
 import com.slte.app.utils.ErrorMessages
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 sealed interface RegisterUiState {
     data class Form(
@@ -28,20 +26,37 @@ sealed interface RegisterUiState {
         val inviteForceEnabled: Boolean = false,
     ) : RegisterUiState
 
-    data class SendingCode(val form: Form) : RegisterUiState
-    data class Countdown(val form: Form, val seconds: Int) : RegisterUiState
-    data class Registering(val form: Form) : RegisterUiState
-    data class RegisterSuccess(val form: Form) : RegisterUiState
-    data class Error(val form: Form, val messageRes: Int) : RegisterUiState
+    data class SendingCode(
+        val form: Form,
+    ) : RegisterUiState
+
+    data class Countdown(
+        val form: Form,
+        val seconds: Int,
+    ) : RegisterUiState
+
+    data class Registering(
+        val form: Form,
+    ) : RegisterUiState
+
+    data class RegisterSuccess(
+        val form: Form,
+    ) : RegisterUiState
+
+    data class Error(
+        val form: Form,
+        val messageRes: Int,
+    ) : RegisterUiState
 }
 
 /** 注册配置由登录页加载后通过 initConfig() 注入。 */
 @HiltViewModel
-class RegisterViewModel @Inject constructor(
+class RegisterViewModel
+@Inject
+constructor(
     private val authRepository: AuthRepository,
     private val countdownUseCase: CountdownUseCase,
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow<RegisterUiState>(RegisterUiState.Form())
     val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
 
@@ -58,8 +73,9 @@ class RegisterViewModel @Inject constructor(
     }
 
     private val isLoadingOrRegistering: Boolean
-        get() = _uiState.value is RegisterUiState.SendingCode
-                || _uiState.value is RegisterUiState.Registering
+        get() =
+            _uiState.value is RegisterUiState.SendingCode ||
+                _uiState.value is RegisterUiState.Registering
 
     private val isCountingDown: Boolean
         get() = _uiState.value is RegisterUiState.Countdown
@@ -68,18 +84,22 @@ class RegisterViewModel @Inject constructor(
      * 由 RegisterScreen 在组合时调用，注入登录页已加载好的配置。
      * 注册页本身不发起网络请求获取配置。
      */
-    fun initConfig(emailVerifyEnabled: Boolean, inviteForceEnabled: Boolean) {
+    fun initConfig(
+        emailVerifyEnabled: Boolean,
+        inviteForceEnabled: Boolean,
+    ) {
         val f = currentForm()
         if (f.emailVerifyEnabled == emailVerifyEnabled && f.inviteForceEnabled == inviteForceEnabled) return
-        _uiState.value = RegisterUiState.Form(
-            email = f.email,
-            password = f.password,
-            passwordVisible = f.passwordVisible,
-            verificationCode = f.verificationCode,
-            inviteCode = f.inviteCode,
-            emailVerifyEnabled = emailVerifyEnabled,
-            inviteForceEnabled = inviteForceEnabled,
-        )
+        _uiState.value =
+            RegisterUiState.Form(
+                email = f.email,
+                password = f.password,
+                passwordVisible = f.passwordVisible,
+                verificationCode = f.verificationCode,
+                inviteCode = f.inviteCode,
+                emailVerifyEnabled = emailVerifyEnabled,
+                inviteForceEnabled = inviteForceEnabled,
+            )
     }
 
     /** 更新表单字段时保留当前状态类型（倒计时/错误等不被输入覆盖） */
@@ -106,15 +126,16 @@ class RegisterViewModel @Inject constructor(
 
     fun dismissError() {
         val f = currentForm()
-        _uiState.value = RegisterUiState.Form(
-            email = f.email,
-            password = f.password,
-            passwordVisible = f.passwordVisible,
-            verificationCode = f.verificationCode,
-            inviteCode = f.inviteCode,
-            emailVerifyEnabled = f.emailVerifyEnabled,
-            inviteForceEnabled = f.inviteForceEnabled,
-        )
+        _uiState.value =
+            RegisterUiState.Form(
+                email = f.email,
+                password = f.password,
+                passwordVisible = f.passwordVisible,
+                verificationCode = f.verificationCode,
+                inviteCode = f.inviteCode,
+                emailVerifyEnabled = f.emailVerifyEnabled,
+                inviteForceEnabled = f.inviteForceEnabled,
+            )
     }
 
     fun sendVerificationCode() {
@@ -133,13 +154,10 @@ class RegisterViewModel @Inject constructor(
                 onSuccess = { startCountdown() },
                 onFailure = { e ->
                     val f2 = currentForm()
-                    val resId = if (e is ApiException) {
-                        ErrorMessages.mapSendCodeError(e.message)
-                    } else {
-                        ErrorMessages.networkError()
-                    }
+                    val resId =
+                        ErrorMessages.forSendCode(e)
                     _uiState.value = RegisterUiState.Error(f2, resId)
-                }
+                },
             )
         }
     }
@@ -149,12 +167,13 @@ class RegisterViewModel @Inject constructor(
         val f = currentForm()
         _uiState.value = RegisterUiState.Countdown(f, 0)
 
-        countdownJob = viewModelScope.launch {
-            countdownUseCase().collect { seconds ->
-                val f2 = currentForm()
-                _uiState.value = RegisterUiState.Countdown(f2, seconds)
+        countdownJob =
+            viewModelScope.launch {
+                countdownUseCase().collect { seconds ->
+                    val f2 = currentForm()
+                    _uiState.value = RegisterUiState.Countdown(f2, seconds)
+                }
             }
-        }
     }
 
     fun register() {
@@ -180,27 +199,26 @@ class RegisterViewModel @Inject constructor(
         _uiState.value = RegisterUiState.Registering(f)
 
         registerJob?.cancel()
-        registerJob = viewModelScope.launch {
-            val f2 = currentForm()
-            val result = authRepository.register(
-                email = f2.email,
-                password = f2.password,
-                emailCode = if (f2.emailVerifyEnabled) f2.verificationCode else null,
-                inviteCode = if (f2.inviteForceEnabled || f2.inviteCode.isNotBlank()) f2.inviteCode else null
-            )
-            result.fold(
-                onSuccess = { _uiState.value = RegisterUiState.RegisterSuccess(f2) },
-                onFailure = { e ->
-                    val f3 = currentForm()
-                    val resId = if (e is ApiException) {
-                        ErrorMessages.mapRegisterError(e.message)
-                    } else {
-                        ErrorMessages.networkError()
-                    }
-                    _uiState.value = RegisterUiState.Error(f3, resId)
-                }
-            )
-        }
+        registerJob =
+            viewModelScope.launch {
+                val f2 = currentForm()
+                val result =
+                    authRepository.register(
+                        email = f2.email,
+                        password = f2.password,
+                        emailCode = if (f2.emailVerifyEnabled) f2.verificationCode else null,
+                        inviteCode = if (f2.inviteForceEnabled || f2.inviteCode.isNotBlank()) f2.inviteCode else null,
+                    )
+                result.fold(
+                    onSuccess = { _uiState.value = RegisterUiState.RegisterSuccess(f2) },
+                    onFailure = { e ->
+                        val f3 = currentForm()
+                        val resId =
+                            ErrorMessages.forRegister(e)
+                        _uiState.value = RegisterUiState.Error(f3, resId)
+                    },
+                )
+            }
     }
 
     override fun onCleared() {
@@ -214,14 +232,15 @@ class RegisterViewModel @Inject constructor(
         registerJob?.cancel()
         countdownJob?.cancel()
         val f = currentForm()
-        _uiState.value = RegisterUiState.Form(
-            email = f.email,
-            password = f.password,
-            passwordVisible = f.passwordVisible,
-            verificationCode = f.verificationCode,
-            inviteCode = f.inviteCode,
-            emailVerifyEnabled = f.emailVerifyEnabled,
-            inviteForceEnabled = f.inviteForceEnabled
-        )
+        _uiState.value =
+            RegisterUiState.Form(
+                email = f.email,
+                password = f.password,
+                passwordVisible = f.passwordVisible,
+                verificationCode = f.verificationCode,
+                inviteCode = f.inviteCode,
+                emailVerifyEnabled = f.emailVerifyEnabled,
+                inviteForceEnabled = f.inviteForceEnabled,
+            )
     }
 }

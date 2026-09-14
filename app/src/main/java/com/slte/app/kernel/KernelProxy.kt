@@ -2,34 +2,68 @@ package com.slte.app.kernel
 
 import android.content.Context
 import android.content.Intent
-import com.github.kr328.clash.core.Clash
+import androidx.core.content.edit
 import com.github.kr328.clash.common.constants.Intents
+import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.service.util.sendBroadcastSelf
+import com.slte.app.utils.AppLog
 import com.slte.app.utils.Constants
 import com.slte.app.utils.sanitizeLog
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.concurrent.TimeUnit
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
-import java.util.concurrent.TimeUnit
-import javax.inject.Inject
-import javax.inject.Singleton
-import com.slte.app.utils.AppLog
+
+/** 服务器行当前策略类型（跟随内核真实选择）：与显示文案解耦，文案由 UI 层按语言解析 */
+enum class SelectionType { AUTO, FALLBACK, MANUAL }
 
 /** 首页服务器行的真实状态：当前策略 + 生效节点 */
 data class KernelServerInfo(
-    val selection: String?,
-    val node: String?
+    val selection: SelectionType?,
+    val node: String?,
 )
 
 /** 出口 IP（IPv4 保底，优先 IPv6）与对应国家 ISO 码（小写），countryCode 可能为 null */
 data class IpGeoInfo(
     val ip: String,
     val ipv6: String? = null,
-    val countryCode: String?
+    val countryCode: String?,
 )
+
+/** 程序性错误（多为 Bug）的异常类型：不静默吞掉，打 E 级日志暴露 */
+private val PROGRAMMATIC_FAULTS =
+    setOf(
+        NullPointerException::class,
+        IllegalStateException::class,
+        IndexOutOfBoundsException::class,
+        ArrayIndexOutOfBoundsException::class,
+        ClassCastException::class,
+        NoSuchElementException::class,
+        ArithmeticException::class,
+        ConcurrentModificationException::class,
+        kotlin.UninitializedPropertyAccessException::class,
+    )
+
+private fun Throwable.isProgrammaticFault(): Boolean = PROGRAMMATIC_FAULTS.any { it.isInstance(this) } ||
+    javaClass.name.startsWith("kotlin.")
+
+/**
+ * 桥接层异常统一出口：可预期的异常（网络/Binder 抖动等）打 W；
+ * 程序性错误（NPE/越界/强制转换等）打 E 并附堆栈，避免被降级默认值掩盖成"数据神秘消失"。
+ */
+internal fun Exception.logAsFault(tag: String = "SLTE-Kernel") {
+    val summary = "${javaClass.simpleName}: ${sanitizeLog(message ?: "Unknown")}"
+    if (isProgrammaticFault()) {
+        AppLog.e(tag, "$summary\n${stackTraceToString()}")
+    } else {
+        AppLog.w(tag, summary)
+    }
+}
 
 /**
  * 内核代理门面：策略组/节点选择、模式切换、测速、出口 IP。
@@ -38,22 +72,26 @@ data class IpGeoInfo(
  * 本类保持门面入口与模式/TUN 管理。
  */
 @Singleton
-class KernelProxy @Inject constructor(
+class KernelProxy
+@Inject
+constructor(
     internal val manager: KernelManager,
     internal val config: KernelConfig,
     internal val speedResultStore: SpeedResultStore,
     internal val geoIpResolver: GeoIpResolver,
-    @ApplicationContext internal val context: Context
+    @ApplicationContext internal val context: Context,
 ) {
-
     internal val modePrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    internal suspend fun <T> safe(default: T, block: suspend () -> T): T = try {
+    internal suspend fun <T> safe(
+        default: T,
+        block: suspend () -> T,
+    ): T = try {
         withContext(Dispatchers.IO) { block() }
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        AppLog.w("SLTE-Kernel", "${e.javaClass.simpleName}: ${sanitizeLog(e.message ?: "Unknown")}")
+        e.logAsFault()
         default
     }
 
@@ -67,13 +105,14 @@ class KernelProxy @Inject constructor(
         val clash = manager.clash() ?: return@safe null
         // 持久化 override 是模式选择的权威来源：内核刚初始化（reset 后默认 rule）
         // 或尚未加载配置时，tunnel state 无法反映用户上次的选择
-        val mode = clash.queryOverride(Clash.OverrideSlot.Persist).mode
-            ?: clash.queryTunnelState().mode
+        val mode =
+            clash.queryOverride(Clash.OverrideSlot.Persist).mode
+                ?: clash.queryTunnelState().mode
         when (mode) {
             TunnelState.Mode.Global -> Constants.PROXY_MODE_GLOBAL
             TunnelState.Mode.Rule -> Constants.DEFAULT_PROXY_MODE
-            TunnelState.Mode.Direct -> "直连"
-            TunnelState.Mode.Script -> "脚本"
+            TunnelState.Mode.Direct -> Constants.PROXY_MODE_DIRECT
+            TunnelState.Mode.Script -> Constants.PROXY_MODE_SCRIPT
         }
     }
 
@@ -81,19 +120,16 @@ class KernelProxy @Inject constructor(
     suspend fun setProxyMode(mode: String) = safe(Unit) {
         AppLog.d("SLTE-Kernel", "setProxyMode: $mode")
         // 先本地持久化，保证内核不可用时（未连接）选择不丢失
-        modePrefs.edit().putString(KEY_PROXY_MODE, mode).apply()
+        modePrefs.edit { putString(KEY_PROXY_MODE, mode) }
         val clash = manager.clash()
         if (clash == null) {
             AppLog.d("SLTE-Kernel", "setProxyMode: clash=null，已本地保存，待内核就绪后同步")
             return@safe
         }
-        val override = clash.queryOverride(Clash.OverrideSlot.Persist).apply {
-            this.mode = if (mode == Constants.PROXY_MODE_GLOBAL) {
-                TunnelState.Mode.Global
-            } else {
-                TunnelState.Mode.Rule
+        val override =
+            clash.queryOverride(Clash.OverrideSlot.Persist).apply {
+                this.mode = tunnelModeOf(mode)
             }
-        }
         clash.patchOverride(Clash.OverrideSlot.Persist, override)
         AppLog.d("SLTE-Kernel", "setProxyMode: override written, sending broadcast")
         context.sendBroadcastSelf(Intent(Intents.ACTION_OVERRIDE_CHANGED))
@@ -103,20 +139,25 @@ class KernelProxy @Inject constructor(
     suspend fun ensurePersistedMode() = safe(Unit) {
         val clash = manager.clash() ?: return@safe
         val saved = modePrefs.getString(KEY_PROXY_MODE, null) ?: return@safe
-        val target = if (saved == Constants.PROXY_MODE_GLOBAL) {
-            TunnelState.Mode.Global
-        } else {
-            TunnelState.Mode.Rule
-        }
+        val target = tunnelModeOf(saved)
         val current = clash.queryOverride(Clash.OverrideSlot.Persist).mode
         if (current != target) {
-            val override = clash.queryOverride(Clash.OverrideSlot.Persist).apply {
-                this.mode = target
-            }
+            val override =
+                clash.queryOverride(Clash.OverrideSlot.Persist).apply {
+                    this.mode = target
+                }
             clash.patchOverride(Clash.OverrideSlot.Persist, override)
             context.sendBroadcastSelf(Intent(Intents.ACTION_OVERRIDE_CHANGED))
             AppLog.d("SLTE-Kernel", "ensurePersistedMode: synced $saved")
         }
+    }
+
+    /** 字符串模式 → 内核枚举；修复"回读直连再设置被翻转为规则"的不对称 */
+    private fun tunnelModeOf(mode: String): TunnelState.Mode = when (mode) {
+        Constants.PROXY_MODE_GLOBAL -> TunnelState.Mode.Global
+        Constants.PROXY_MODE_DIRECT -> TunnelState.Mode.Direct
+        Constants.PROXY_MODE_SCRIPT -> TunnelState.Mode.Script
+        else -> TunnelState.Mode.Rule
     }
 
     /**
@@ -127,7 +168,7 @@ class KernelProxy @Inject constructor(
         val clash = manager.clash()
         if (clash != null) {
             val current = clash.tunStackMode()
-            modePrefs.edit().putString(KEY_TUN_STACK, current).apply()
+            modePrefs.edit { putString(KEY_TUN_STACK, current) }
             return@safe current
         }
         modePrefs.getString(KEY_TUN_STACK, null) ?: DEFAULT_TUN_STACK
@@ -139,7 +180,7 @@ class KernelProxy @Inject constructor(
      */
     suspend fun setTunStack(mode: String) = safe(Unit) {
         val normalized = if (mode in TUN_STACK_VALUES) mode else DEFAULT_TUN_STACK
-        modePrefs.edit().putString(KEY_TUN_STACK, normalized).apply()
+        modePrefs.edit { putString(KEY_TUN_STACK, normalized) }
         val clash = manager.clash()
         if (clash == null) {
             AppLog.w("SLTE-Kernel", "setTunStack: clash=null，已本地保存，待内核就绪后同步")
@@ -149,11 +190,13 @@ class KernelProxy @Inject constructor(
         AppLog.d("SLTE-Kernel", "setTunStack: $normalized")
     }
 
-    /** 出口 IP 探测客户端（复用连接池） */
+    /** 出口 IP 探测客户端（复用连接池）；callTimeout 兜底慢滴流响应绕过 readTimeout */
     internal val ipClient: OkHttpClient by lazy {
-        OkHttpClient.Builder()
+        OkHttpClient
+            .Builder()
             .connectTimeout(5, TimeUnit.SECONDS)
             .readTimeout(5, TimeUnit.SECONDS)
+            .callTimeout(10, TimeUnit.SECONDS)
             .build()
     }
 

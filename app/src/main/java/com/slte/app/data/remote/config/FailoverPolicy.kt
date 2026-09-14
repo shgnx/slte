@@ -7,7 +7,6 @@ import okhttp3.Response
  * 纯函数便于单测；HTTP 响应读取由拦截器负责。
  */
 object FailoverPolicy {
-
     /** 允许 failover 重放的幂等方法：POST 在"连接超时但已落库"窗口下重复发送会导致重复下单/结算 */
     val RETRYABLE_METHODS = setOf("GET", "HEAD", "OPTIONS")
 
@@ -28,17 +27,23 @@ object FailoverPolicy {
      * 用于识别"HTTP 200 但返回劫持页/网关默认页/被篡改内容"的假成功；
      * 非 JSON 声明（如订阅 YAML 的 text/plain）不参与判定，避免误伤合法响应。
      */
-    fun isJsonMismatch(contentType: String?, firstByte: Int?): Boolean {
+    fun isJsonMismatch(
+        contentType: String?,
+        firstByte: Int?,
+    ): Boolean {
         val declaresJson = contentType?.lowercase()?.contains("json") == true
         if (!declaresJson || firstByte == null) return false
         return firstByte != '{'.code && firstByte != '['.code
     }
 
     /** 从响应读取用于 JSON 判定的首字节；不消费响应体（peek 语义） */
-    fun firstByteOf(response: Response): Int? =
-        try {
-            response.peekBody(1).byteStream().read().takeIf { it >= 0 }
-        } catch (_: Exception) {
-            null
-        }
+    fun firstByteOf(response: Response): Int? = try {
+        response
+            .peekBody(1)
+            .byteStream()
+            .read()
+            .takeIf { it >= 0 }
+    } catch (_: Exception) {
+        null
+    }
 }

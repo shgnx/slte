@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.hilt) apply false
+    alias(libs.plugins.ktlint) apply false
 }
 
 // JDK 范围检查:AGP 8.9 要求 JDK ≥ 17;Gradle 8.13 官方支持运行 JDK ≤ 23。

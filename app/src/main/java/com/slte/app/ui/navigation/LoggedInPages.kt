@@ -24,7 +24,7 @@ internal fun OrdersPageContent(
     OrdersScreen(
         onBack = onBack,
         onPay = { tradeNo -> purchaseViewModel.loadPaymentForOrder(tradeNo) },
-        viewModel = ordersViewModel
+        viewModel = ordersViewModel,
     )
     PurchaseFlow(
         step = purchaseStep,
@@ -36,8 +36,11 @@ internal fun OrdersPageContent(
         onConfirmWarning = {},
         onSelectPayment = purchaseViewModel::selectPaymentMethod,
         onConfirmPayment = purchaseViewModel::confirmPayment,
-        onPaymentReturn = { purchaseViewModel.onPaymentReturn(); ordersViewModel.refresh() },
-        onDismiss = purchaseViewModel::goBack
+        onPaymentReturn = {
+            purchaseViewModel.onPaymentReturn()
+            ordersViewModel.refresh()
+        },
+        onDismiss = purchaseViewModel::goBack,
     )
     // 支付等待轮询（轮询逻辑在 PurchaseViewModel 内，UI 只负责启动与副作用编排）
     val payingTradeNo = (purchaseStep as? PurchaseStep.OrderPayment)?.tradeNo
@@ -72,6 +75,6 @@ internal fun DashboardPageContent(
         onNotice = onNotice,
         onSupport = onSupport,
         onProfile = onProfile,
-        onRenew = onRenew
+        onRenew = onRenew,
     )
 }

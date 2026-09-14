@@ -13,6 +13,7 @@ import kotlinx.coroutines.runBlocking
 import java.io.FileNotFoundException
 import android.provider.DocumentsContract.Document as D
 
+// ponytail: 上游 CMA 的 SAF 文档提供者，本应用无任何 applicationId.files 调用方（document/* 同属该链路）。
 class FilesProvider : DocumentsProvider() {
     companion object {
         private const val DEFAULT_ROOT_ID = "0"

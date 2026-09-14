@@ -7,26 +7,27 @@ import com.slte.app.data.repository.OrderRepository
 import com.slte.app.domain.model.OrderInfo
 import com.slte.app.utils.ErrorMessages
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class OrdersData(
     val orders: List<OrderInfo> = emptyList(),
     val isLoading: Boolean = true,
     val isEntering: Boolean = false,
     val isRefreshing: Boolean = false,
-    val toastRes: Int? = null
+    val toastRes: Int? = null,
 )
 
 @HiltViewModel
-class OrdersViewModel @Inject constructor(
-    private val orderRepository: OrderRepository
+class OrdersViewModel
+@Inject
+constructor(
+    private val orderRepository: OrderRepository,
 ) : ViewModel() {
-
     private val _data = MutableStateFlow(OrdersData())
     val data: StateFlow<OrdersData> = _data.asStateFlow()
 
@@ -43,7 +44,6 @@ class OrdersViewModel @Inject constructor(
         loadOrders()
     }
 
-    /** 下拉刷新：强制重拉订单列表 */
     fun refresh() {
         if (_data.value.isRefreshing) return
         _data.update { it.copy(isRefreshing = true) }
@@ -55,8 +55,8 @@ class OrdersViewModel @Inject constructor(
                 },
                 onFailure = { throwable ->
                     _data.update { it.copy(isLoading = false, isEntering = false, isRefreshing = false) }
-                    _errorMessageRes.value = ErrorMessages.mapOrderError(throwable.message)
-                }
+                    _errorMessageRes.value = ErrorMessages.forOrder(throwable)
+                },
             )
         }
     }
@@ -70,7 +70,7 @@ class OrdersViewModel @Inject constructor(
                 },
                 onFailure = {
                     _data.update { it.copy(toastRes = R.string.order_cancel_failed) }
-                }
+                },
             )
         }
     }
@@ -89,10 +89,9 @@ class OrdersViewModel @Inject constructor(
                 },
                 onFailure = { throwable ->
                     _data.update { it.copy(isLoading = false, isEntering = false) }
-                    _errorMessageRes.value = ErrorMessages.mapOrderError(throwable.message)
-                }
+                    _errorMessageRes.value = ErrorMessages.forOrder(throwable)
+                },
             )
         }
     }
-
 }

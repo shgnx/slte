@@ -72,7 +72,6 @@ on:
 
 permissions:
   contents: read
-  actions: write
 
 jobs:
   build:
@@ -107,8 +106,12 @@ jobs:
 
       - name: 应用自定义图标
         # 图标经构建输入（iconB64）传入，不写入仓库；兼容仓库内 app/icon-source.png（旧机制）。
-        # 用 ImageMagick 生成五个密度 × 方形/圆形启动图标，覆盖 checkout 出来的
-        # res/mipmap-*/ic_launcher*.png；同名覆盖即可换图标，不改源码与 Manifest。
+        # 生成两套产物（同名覆盖，不改源码与 Manifest）：
+        #   1) 自适应图标前景 res/drawable-nodpi/ic_launcher_foreground.png（108dp 画布，图形落在 72dp 可见区）
+        #      —— Android 8+ 由 res/mipmap-anydpi-v26/ic_launcher*.xml 引用（AAPT 要求该限定符）；
+        #   2) 旧版回退 mipmap-*/ic_launcher*.png（圆角方形 / 正圆，带留白）。
+        #      仅当 fork 把 minSdk 下调到 26 以下时才需要；当前 minSdk 28 只走自适应图标。
+        # 圆角与圆形掩膜用 4 倍超采样生成，避免锯齿。
         if: inputs.iconB64 != '' || hashFiles('app/icon-source.png') != ''
         env:
           ICON_B64: ${{ inputs.iconB64 }}
@@ -121,21 +124,62 @@ jobs:
           if ! command -v convert >/dev/null 2>&1; then
             sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
           fi
+
+          SS=4                                  # 掩膜超采样倍数
+          VISIBLE=288                           # 自适应图标可见区 72dp @4x
+          CANVAS=432                            # 自适应图标画布 108dp @4x
+          RADIUS_PCT=22                         # 圆角半径占比（平台推荐 ~22%）
+
+          mask_squircle() {                     # $1=尺寸(px) $2=输出
+            local s=$1 out=$2 r=$(( $1 * RADIUS_PCT * SS / 100 ))
+            convert -size "$((s * SS))x$((s * SS))" xc:none -fill white \
+              -draw "roundrectangle 0,0,$((s * SS - 1)),$((s * SS - 1)),${r},${r}" \
+              -resize "${s}x${s}" "$out"
+          }
+          mask_circle() {                       # $1=尺寸(px) $2=输出
+            local s=$1 out=$2 c=$((s * SS / 2))
+            convert -size "$((s * SS))x$((s * SS))" xc:none -fill white \
+              -draw "circle ${c},${c} ${c},1" -resize "${s}x${s}" "$out"
+          }
+
+          # 1) 自适应图标前景：源图裁成正方形 → 缩放到可见区 → 圆角方形掩膜 → 居中贴到 108dp 透明画布
+          mkdir -p app/src/main/res/drawable-nodpi
+          convert app/icon-source.png -resize "${VISIBLE}x${VISIBLE}^" -gravity center \
+            -extent "${VISIBLE}x${VISIBLE}" /tmp/_fg.png
+          mask_squircle "$VISIBLE" /tmp/_fg_mask.png
+          convert /tmp/_fg.png /tmp/_fg_mask.png -alpha off -compose CopyOpacity -composite /tmp/_fg_cut.png
+          convert -size "${CANVAS}x${CANVAS}" xc:none /tmp/_fg_cut.png \
+            -geometry "+$(( (CANVAS - VISIBLE) / 2 ))+$(( (CANVAS - VISIBLE) / 2 ))" -composite \
+            app/src/main/res/drawable-nodpi/ic_launcher_foreground.png
+
+          # 2) 旧版回退图标（API < 26）：圆角方形 + 正圆
+          # 注意先 mkdir：本次改动后 mipmap-* 目录已从仓库移除（改走自适应图标），
+          # fresh checkout 下目录不存在，而 ImageMagick convert 不会创建父目录。
           for entry in "mdpi 48" "hdpi 72" "xhdpi 96" "xxhdpi 144" "xxxhdpi 192"; do
             set -- $entry
             density=$1
             size=$2
             dir="app/src/main/res/mipmap-$density"
-            # 居中裁成正方形并缩放到目标密度
+            mkdir -p "$dir"
             convert app/icon-source.png -resize "${size}x${size}^" -gravity center \
-              -extent "${size}x${size}" "$dir/ic_launcher.png"
-            # 圆形遮罩生成 round 图标（launcher 圆形场景）
-            convert -size "${size}x${size}" xc:none -fill white \
-              -draw "circle $((size/2)),$((size/2)) $((size/2)),1" "$dir/_mask.png"
-            convert "$dir/ic_launcher.png" "$dir/_mask.png" -alpha off \
+              -extent "${size}x${size}" "$dir/_base.png"
+            mask_squircle "$size" "$dir/_mask_sq.png"
+            mask_circle "$size" "$dir/_mask_round.png"
+            convert "$dir/_base.png" "$dir/_mask_sq.png" -alpha off \
+              -compose CopyOpacity -composite "$dir/ic_launcher.png"
+            convert "$dir/_base.png" "$dir/_mask_round.png" -alpha off \
               -compose CopyOpacity -composite "$dir/ic_launcher_round.png"
-            rm -f "$dir/_mask.png"
+            rm -f "$dir/_base.png" "$dir/_mask_sq.png" "$dir/_mask_round.png"
           done
+          rm -f /tmp/_fg.png /tmp/_fg_mask.png /tmp/_fg_cut.png
+
+      - name: 配置 Gradle 缓存
+        # 复用 ~/.gradle 依赖与配置缓存及 gradle wrapper 分发包，避免每次全量下载（编译提速）
+        # gradle-home-cache-includes 排除构建产物（out/build 目录），只缓存可复用依赖
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          # 本 workflow 仅 workflow_dispatch 触发，无 push 事件，恒为 false
+          cache-read-only: false
 
       - name: 单元测试 + 编译
         env:
@@ -147,6 +191,12 @@ jobs:
           SLTE_ALLOWED_DOMAINS: ${{ inputs.allowedDomains }}
           SLTE_NOTIFICATION_TITLE: ${{ inputs.notificationTitle }}
           SLTE_NOTIFICATION_TRAFFIC: ${{ inputs.notificationTraffic }}
+          # 表单输入一律经 env 传递，绝不插值进 run:。
+          # ${{ }} 在 shell 解析前做原文替换，自由文本输入（如 versionName）里的引号可逃逸成任意命令，
+          # 而本 step 的 env 携带发布签名口令 —— 一旦逃逸即可导出签名密钥。
+          SLTE_VERSION_NAME: ${{ inputs.versionName }}
+          SLTE_VERSION_CODE: ${{ inputs.versionCode }}
+          SLTE_BUILD_TYPE: ${{ inputs.buildType }}
           # 海外 runner 直连官方仓库（aliyun 镜像对海外不稳定会导致依赖解析失败）
           SLTE_USE_MIRROR: 'false'
           # release 签名（debug 构建不设，构建脚本自动跳过）
@@ -157,11 +207,54 @@ jobs:
         run: |
           chmod +x gradlew
           # versionCode 留空时按时间戳自动生成（单调递增，可覆盖旧包）
-          VC="${{ inputs.versionCode }}"
+          VC="$SLTE_VERSION_CODE"
           if [ -z "$VC" ]; then VC=$(( $(date +%s) / 60 )); fi
           export SLTE_VERSION_CODE="$VC"
-          export SLTE_VERSION_NAME="${{ inputs.versionName }}"
-          ./gradlew :app:testDebugUnitTest :app:assemble${{ inputs.buildType }}
+          ./gradlew :app:testDebugUnitTest ":app:assemble$SLTE_BUILD_TYPE"
+
+      - name: 代码风格与静态检查（ktlint + Android Lint + R8 存活校验）
+        # 门禁：格式漂移、未使用资源/导入、API 误用、可访问性等问题在此拦下；
+        # 规则与例外见根目录 .editorconfig（含逐条关闭的原因说明）
+        env:
+          # 仅为了让 release 变体能真正跑起来：构建脚本禁止在没有签名配置时执行 release 任务
+          # （防止误用 debug 签名发布）。这里用一次性临时 keystore，不接触任何真实密钥，
+          # 产物也不上传，只为验证 R8 与存活校验（与 ci.yml 的 Release 混淆路径校验一致）。
+          SLTE_RELEASE_STORE_FILE: ${{ runner.temp }}/build-throwaway.keystore
+          SLTE_RELEASE_STORE_PASSWORD: build-throwaway
+          SLTE_RELEASE_KEY_ALIAS: build-throwaway
+          SLTE_RELEASE_KEY_PASSWORD: build-throwaway
+        run: |
+          set -e
+          keytool -genkeypair -v \
+            -keystore "$SLTE_RELEASE_STORE_FILE" \
+            -alias build-throwaway -keyalg RSA -keysize 2048 -validity 1 \
+            -storepass build-throwaway -keypass build-throwaway \
+            -dname "CN=CI-Throwaway, OU=CI, O=CI, C=CN"
+          ./gradlew :app:ktlintCheck :app:lintDebug
+
+          # R8 存活校验：断言 release 混淆后 data/remote 下所有 @Serializable DTO 与
+          # Retrofit 接口仍然存在。构建成功并不代表运行时可用——历史事故是 proguard 规则里
+          # 的 allowshrinking 让 R8 删掉 31 个 DTO，导致每个接口在发请求前就抛
+          # Unable to create converter（界面只显示"请求失败"），而构建完全绿。
+          ./gradlew :app:verifyReleaseApiSurvivors
+
+          # 图标统一守卫：页面禁止直接写 Material Icons，必须引用唯一图标库 SlteIcons
+          # （见 UI-GUIDELINES §3.4；换图标族只需改 ui/theme/SlteIcons.kt 一处）
+          if rg -n 'Icons\.(AutoMirrored\.)?(Outlined|Rounded|Filled|Sharp|TwoTone)\.' \
+               app/src/main/java --glob '!**/ui/theme/SlteIcons.kt'; then
+            echo "::error::页面出现裸 Icons.* 引用，请改为 SlteIcons.*（UI-GUIDELINES §3.4）"
+            exit 1
+          fi
+
+      - name: 上传检查报告
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SLTE-reports-${{ inputs.versionName }}
+          path: |
+            app/build/reports/ktlint/**
+            app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
 
       - name: 上传产物
         uses: actions/upload-artifact@v4

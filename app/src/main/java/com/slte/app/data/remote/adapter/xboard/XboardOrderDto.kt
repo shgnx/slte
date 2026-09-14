@@ -1,6 +1,5 @@
 package com.slte.app.data.remote.adapter.xboard
 
-import com.slte.app.data.remote.api.dto.CheckoutResultDto
 import com.slte.app.data.remote.api.dto.CouponCheckResultDto
 import com.slte.app.data.remote.api.dto.OrderInfoDto
 import com.slte.app.data.remote.api.dto.PaymentMethodDto
@@ -10,36 +9,34 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
-
 @Serializable
 data class XboardCreateOrderRequest(
     @SerialName("plan_id")
     val planId: Int,
     val period: String,
     @SerialName("coupon_code")
-    val couponCode: String? = null
+    val couponCode: String? = null,
 )
 
 @Serializable
 data class XboardCouponCheckRequest(
     val code: String,
     @SerialName("plan_id")
-    val planId: Int? = null
+    val planId: Int? = null,
 )
 
 @Serializable
 data class XboardCheckoutRequest(
     @SerialName("trade_no")
     val tradeNo: String,
-    val method: Int
+    val method: Int,
 )
 
 @Serializable
 data class XboardCancelOrderRequest(
     @SerialName("trade_no")
-    val tradeNo: String
+    val tradeNo: String,
 )
-
 
 @Serializable
 data class XboardPlanData(
@@ -75,7 +72,7 @@ data class XboardPlanData(
     val groupId: Int? = null,
     val sort: Int? = null,
     @SerialName("transfer_enable")
-    val transferEnable: Int = 0
+    val transferEnable: Int = 0,
 )
 
 fun XboardPlanData.toDomainPlan() = PlanInfoDto(
@@ -95,7 +92,7 @@ fun XboardPlanData.toDomainPlan() = PlanInfoDto(
     transferEnable = transferEnable,
     show = show,
     renew = renew,
-    sort = sort
+    sort = sort,
 )
 
 @Serializable
@@ -121,7 +118,7 @@ data class XboardOrderData(
     val createdAt: Long = 0L,
     @SerialName("expired_at")
     val expiredAt: Long = 0L,
-    val plan: XboardPlanData? = null
+    val plan: XboardPlanData? = null,
 )
 
 fun XboardOrderData.toDomainOrder() = OrderInfoDto(
@@ -137,49 +134,7 @@ fun XboardOrderData.toDomainOrder() = OrderInfoDto(
     status = status,
     period = period,
     createdAt = createdAt,
-    expiredAt = expiredAt
-)
-
-@Serializable
-data class XboardOrderDetailData(
-    val id: Int = 0,
-    @SerialName("trade_no")
-    val tradeNo: String = "",
-    @SerialName("total_amount")
-    val totalAmount: Int = 0,
-    @SerialName("balance_amount")
-    val balanceAmount: JsonElement? = null,
-    @SerialName("discount_amount")
-    val discountAmount: JsonElement? = null,
-    @SerialName("surplus_amount")
-    val surplusAmount: JsonElement? = null,
-    @SerialName("surplus_credit")
-    val surplusCredit: JsonElement? = null,
-    @SerialName("handling_amount")
-    val handlingAmount: JsonElement? = null,
-    val status: Int = 0,
-    val period: String = "",
-    @SerialName("created_at")
-    val createdAt: Long = 0L,
-    @SerialName("expired_at")
-    val expiredAt: Long = 0L,
-    val plan: XboardPlanData? = null
-)
-
-fun XboardOrderDetailData.toDomainOrder() = OrderInfoDto(
-    id = id,
-    tradeNo = tradeNo,
-    planName = plan?.name ?: "",
-    totalAmount = totalAmount,
-    balanceAmount = balanceAmount.jsonIntOrNull() ?: 0,
-    discountAmount = discountAmount.jsonIntOrNull() ?: 0,
-    surplusAmount = surplusAmount.jsonIntOrNull() ?: 0,
-    refundAmount = surplusCredit.jsonIntOrNull() ?: 0,
-    handlingAmount = handlingAmount.jsonIntOrNull(),
-    status = status,
-    period = period,
-    createdAt = createdAt,
-    expiredAt = expiredAt
+    expiredAt = expiredAt,
 )
 
 @Serializable
@@ -190,13 +145,13 @@ data class XboardCouponData(
     val type: Int? = null,
     val value: Int? = null,
     @SerialName("plan_id")
-    val planId: Int? = null
+    val planId: Int? = null,
 )
 
 fun XboardCouponData.toDomainCouponCheck() = CouponCheckResultDto(
     name = name ?: code ?: "",
     type = type ?: 2,
-    value = value ?: 0
+    value = value ?: 0,
 )
 
 /** 后端可能返回数字、JSON null 或字符串 "null"，统一容错为 Int? */
@@ -210,12 +165,12 @@ data class XboardPaymentMethodData(
     val id: Int = 0,
     val name: String = "",
     val payment: String = "",
-    val icon: String? = null
+    val icon: String? = null,
 )
 
 fun XboardPaymentMethodData.toDomainPaymentMethod() = PaymentMethodDto(
     id = id,
     name = name,
     payment = payment,
-    icon = icon
+    icon = icon,
 )

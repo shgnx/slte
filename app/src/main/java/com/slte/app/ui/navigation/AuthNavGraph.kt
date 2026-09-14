@@ -27,7 +27,8 @@ import com.slte.app.ui.screen.register.RegisterScreen
  * 推入从右侧滑入，返回向右侧滑出，时长 280ms。
  * 登录/注册成功后由 AuthRepository.sessionState StateFlow 自动切换到主界面。
  */
-private const val TRANSITION_DURATION = 280
+/** 页面转场时长（毫秒）：登录前后两套导航共用，避免两处各写一份 280 */
+internal const val PAGE_TRANSITION_DURATION = 280
 
 @Composable
 fun AuthNavGraph() {
@@ -35,28 +36,28 @@ fun AuthNavGraph() {
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+        color = MaterialTheme.colorScheme.background,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             NavHost(
                 navController = navController,
                 startDestination = Routes.AUTH_LOGIN,
                 enterTransition = {
-                    slideInHorizontally(tween(TRANSITION_DURATION)) { it / 3 } +
-                    fadeIn(tween(TRANSITION_DURATION))
+                    slideInHorizontally(tween(PAGE_TRANSITION_DURATION)) { it / 3 } +
+                        fadeIn(tween(PAGE_TRANSITION_DURATION))
                 },
                 exitTransition = {
-                    slideOutHorizontally(tween(TRANSITION_DURATION)) { -it / 3 } +
-                    fadeOut(tween(TRANSITION_DURATION))
+                    slideOutHorizontally(tween(PAGE_TRANSITION_DURATION)) { -it / 3 } +
+                        fadeOut(tween(PAGE_TRANSITION_DURATION))
                 },
                 popEnterTransition = {
-                    slideInHorizontally(tween(TRANSITION_DURATION)) { -it / 3 } +
-                    fadeIn(tween(TRANSITION_DURATION))
+                    slideInHorizontally(tween(PAGE_TRANSITION_DURATION)) { -it / 3 } +
+                        fadeIn(tween(PAGE_TRANSITION_DURATION))
                 },
                 popExitTransition = {
-                    slideOutHorizontally(tween(TRANSITION_DURATION)) { it / 3 } +
-                    fadeOut(tween(TRANSITION_DURATION))
-                }
+                    slideOutHorizontally(tween(PAGE_TRANSITION_DURATION)) { it / 3 } +
+                        fadeOut(tween(PAGE_TRANSITION_DURATION))
+                },
             ) {
                 composable(Routes.AUTH_LOGIN) {
                     LoginScreen(
@@ -65,9 +66,9 @@ fun AuthNavGraph() {
                         },
                         onCreateAccount = { emailVerify, inviteForce ->
                             navController.navigate(
-                                "${Routes.AUTH_REGISTER}?emailVerify=$emailVerify&inviteForce=$inviteForce"
+                                "${Routes.AUTH_REGISTER}?emailVerify=$emailVerify&inviteForce=$inviteForce",
                             )
-                        }
+                        },
                     )
                 }
                 composable(Routes.AUTH_FORGOT) {
@@ -77,15 +78,22 @@ fun AuthNavGraph() {
                         },
                         onResetSuccess = {
                             navController.popBackStack(Routes.AUTH_LOGIN, inclusive = false)
-                        }
+                        },
                     )
                 }
                 composable(
                     route = "${Routes.AUTH_REGISTER}?emailVerify={emailVerify}&inviteForce={inviteForce}",
-                    arguments = listOf(
-                        navArgument("emailVerify") { type = NavType.BoolType; defaultValue = false },
-                        navArgument("inviteForce") { type = NavType.BoolType; defaultValue = false }
-                    )
+                    arguments =
+                    listOf(
+                        navArgument("emailVerify") {
+                            type = NavType.BoolType
+                            defaultValue = false
+                        },
+                        navArgument("inviteForce") {
+                            type = NavType.BoolType
+                            defaultValue = false
+                        },
+                    ),
                 ) { backStackEntry ->
                     val emailVerify = backStackEntry.arguments?.getBoolean("emailVerify") ?: false
                     val inviteForce = backStackEntry.arguments?.getBoolean("inviteForce") ?: false
@@ -94,7 +102,7 @@ fun AuthNavGraph() {
                         inviteForceEnabled = inviteForce,
                         onBackToLogin = {
                             navController.popBackStack()
-                        }
+                        },
                     )
                 }
             }
