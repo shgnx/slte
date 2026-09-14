@@ -22,6 +22,10 @@ jobs:
   quality:
     name: 质量门禁（test + ktlint + lint）
     runs-on: ubuntu-latest
+    # 与 build.yml 保持一致：海外 runner 直连官方仓库（aliyun 镜像在 runner 上
+    # 曾导致插件/KSP 解析失败，见 settings.gradle.kts 的 useAliyunMirror 注释）
+    env:
+      SLTE_USE_MIRROR: 'false'
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
