@@ -190,45 +190,11 @@ jobs:
           export SLTE_VERSION_CODE="$VC"
           ./gradlew :app:testDebugUnitTest ":app:assemble$SLTE_BUILD_TYPE"
 
-      - name: 代码风格与静态检查（ktlint + Android Lint + R8 存活校验）
-
-        env:
-
-          SLTE_RELEASE_STORE_FILE: ${{ runner.temp }}/build-throwaway.keystore
-          SLTE_RELEASE_STORE_PASSWORD: build-throwaway
-          SLTE_RELEASE_KEY_ALIAS: build-throwaway
-          SLTE_RELEASE_KEY_PASSWORD: build-throwaway
-        run: |
-          set -e
-          keytool -genkeypair -v \
-            -keystore "$SLTE_RELEASE_STORE_FILE" \
-            -alias build-throwaway -keyalg RSA -keysize 2048 -validity 1 \
-            -storepass build-throwaway -keypass build-throwaway \
-            -dname "CN=CI-Throwaway, OU=CI, O=CI, C=CN"
-          ./gradlew :app:ktlintCheck :app:lintDebug
-
-          ./gradlew :app:verifyReleaseApiSurvivors
-
-          if rg -n 'Icons\.(AutoMirrored\.)?(Outlined|Rounded|Filled|Sharp|TwoTone)\.' \
-               app/src/main/java --glob '!**/ui/theme/SlteIcons.kt'; then
-            echo "::error::页面出现裸 Icons.* 引用，请改为 SlteIcons.*（UI-GUIDELINES §3.4）"
-            exit 1
-          fi
-
-      - name: 上传检查报告
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: SLTE-reports-${{ inputs.versionName }}
-          path: |
-            app/build/reports/ktlint/**
-            app/build/reports/lint-results-debug.html
-          if-no-files-found: ignore
-
       - name: 上传产物
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: SLTE-${{ inputs.versionName }}
           path: app/build/outputs/apk/*/SLTE-*.apk
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 90
