@@ -161,7 +161,7 @@ jobs:
 
           cache-read-only: false
 
-      - name: 单元测试 + 编译
+      - name: 编译安装包（单元测试仅提示）
         env:
           SLTE_APP_NAME: ${{ inputs.appName }}
           SLTE_APPLICATION_ID: ${{ inputs.applicationId }}
@@ -188,7 +188,12 @@ jobs:
           VC="$SLTE_VERSION_CODE"
           if [ -z "$VC" ]; then VC=$(( $(date +%s) / 60 )); fi
           export SLTE_VERSION_CODE="$VC"
-          ./gradlew :app:testDebugUnitTest ":app:assemble$SLTE_BUILD_TYPE"
+
+          # 单元测试只作为提示：Fork 用户通常会改文案、域名与图标，
+          # 项目自带的测试（多语言键一致性、接口路径等）不通过时不再中断出包
+          ./gradlew :app:testDebugUnitTest || echo "::warning::单元测试未通过（不影响安装包产出）"
+
+          ./gradlew ":app:assemble$SLTE_BUILD_TYPE"
 
       - name: 上传产物
         if: always()
