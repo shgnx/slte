@@ -45,6 +45,18 @@ val slteApplicationId = slteValue("SLTE_APPLICATION_ID") ?: "com.slte.app"
 val slteVersionCode = slteValue("SLTE_VERSION_CODE")?.toIntOrNull() ?: 1
 val slteVersionName = slteValue("SLTE_VERSION_NAME") ?: "1.0.0"
 
+// Android 包名的每一段必须以字母开头（数字不能打头：91.vip.fun 这类会被 AAPT 拒绝，
+// 报错出现在资源链接阶段，信息很不直观）。这里提前校验并给出可读提示。
+val sltePackageSegment = "[A-Za-z][A-Za-z0-9_]*"
+val sltePackageRegex = Regex("$sltePackageSegment(\\.$sltePackageSegment)+")
+if (!sltePackageRegex.matches(slteApplicationId)) {
+    throw GradleException(
+        "应用包名（SLTE_APPLICATION_ID）不合法：`$slteApplicationId`\n" +
+            "规则：至少两段、以点分隔，每一段必须以字母开头，可包含数字与下划线。\n" +
+            "正确示例：com.slte.app；若域名以数字开头（如 91.vip.fun），把该段改成字母开头即可，例如 fun.vip.a91。",
+    )
+}
+
 val slteApiBaseUrl = slteValue("SLTE_API_BASE_URL")?.let(::slteHttps) ?: "https://api.example.com"
 val slteApiType = slteValue("SLTE_API_TYPE") ?: "xiaov2b"
 val slteSubscribePath = slteValue("SLTE_SUBSCRIBE_PATH") ?: "/api/v1/client/subscribe"
