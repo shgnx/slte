@@ -33,6 +33,7 @@ open class FakeAuthApi : AuthApi {
     var plans: List<PlanInfoDto> = emptyList()
     var plansError: Throwable? = null
     var cancelError: Throwable? = null
+    var giftCardRedeemError: Throwable? = null
     var createOrderResult: CreateOrderResultDto? = null
     var createOrderError: Throwable? = null
     var checkoutResult: CheckoutResultDto? = null
@@ -132,6 +133,10 @@ open class FakeAuthApi : AuthApi {
 
     override suspend fun cancelOrder(tradeNo: String) {
         cancelError?.let { throw it }
+    }
+
+    override suspend fun redeemGiftCard(code: String) {
+        giftCardRedeemError?.let { throw it }
     }
 
     override suspend fun fetchInviteInfo(): InviteInfo {

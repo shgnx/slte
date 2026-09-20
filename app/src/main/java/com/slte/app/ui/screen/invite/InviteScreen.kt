@@ -17,7 +17,7 @@ import com.slte.app.R
 import com.slte.app.ui.component.LoadingOverlay
 import com.slte.app.ui.component.SltePullRefresh
 import com.slte.app.ui.component.SlteScaffold
-import com.slte.app.ui.component.ToastTip
+import com.slte.app.ui.component.SubmitTipHost
 import com.slte.app.ui.theme.SlteColors
 import com.slte.app.ui.theme.SlteIcons
 import com.slte.app.utils.Dimens
@@ -31,10 +31,7 @@ fun InviteScreen(
     val data by viewModel.data.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    ToastTip(
-        message = data.toastRes?.let { stringResource(it) },
-        onDismiss = viewModel::clearToast,
-    )
+    SubmitTipHost(tip = data.tip, onTipShown = viewModel::clearTip)
 
     SlteScaffold(
         title = stringResource(R.string.invite_title),

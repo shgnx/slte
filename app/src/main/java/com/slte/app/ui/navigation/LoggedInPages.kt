@@ -3,6 +3,7 @@ package com.slte.app.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.slte.app.ui.screen.about.AboutScreen
+import com.slte.app.ui.screen.giftcard.GiftCardRedeemViewModel
 import com.slte.app.ui.screen.invite.InviteScreen
 import com.slte.app.ui.screen.invite.InviteViewModel
 import com.slte.app.ui.screen.main.DashboardData
@@ -92,6 +93,7 @@ internal fun DashboardPageContent(
 @Composable
 internal fun ProfilePageContent(
     profileViewModel: ProfileViewModel,
+    giftCardViewModel: GiftCardRedeemViewModel,
     onBack: () -> Unit,
     onOrders: () -> Unit,
     onInvite: () -> Unit,
@@ -111,6 +113,7 @@ internal fun ProfilePageContent(
         onAbout = onAbout,
         onLogout = profileViewModel::logout,
         viewModel = profileViewModel,
+        giftCardViewModel = giftCardViewModel,
     )
 }
 
@@ -154,6 +157,7 @@ internal fun NoticePageContent(
 internal fun PlansPageContent(
     plansViewModel: PlansViewModel,
     purchaseViewModel: PurchaseViewModel,
+    giftCardViewModel: GiftCardRedeemViewModel,
     onBack: () -> Unit,
     onGoToOrders: () -> Unit,
 ) {
@@ -161,6 +165,7 @@ internal fun PlansPageContent(
         onBack = onBack,
         viewModel = plansViewModel,
         purchaseViewModel = purchaseViewModel,
+        giftCardViewModel = giftCardViewModel,
         onGoToOrders = onGoToOrders,
     )
 }

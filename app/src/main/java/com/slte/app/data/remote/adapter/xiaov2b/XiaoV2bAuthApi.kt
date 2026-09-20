@@ -239,6 +239,15 @@ class XiaoV2bAuthApi(
         }
     }
 
+    override suspend fun redeemGiftCard(code: String) {
+        val response =
+            AdapterExecute.typed {
+                userApi.redeemGiftCard(XiaoV2bGiftCardRedeemRequest(code))
+            }
+        if (response.data != true) throw ApiException(response.message ?: "兑换失败", ApiErrors.GIFT_CARD)
+        AppLog.i("SLTE-Api", "redeemGiftCard success")
+    }
+
     override suspend fun fetchInviteInfo(): InviteInfo {
         val response = AdapterExecute.typed { userApi.fetchInviteInfo() }
         val data = response.data ?: throw ApiException("获取邀请信息失败", ApiErrors.INVITE_INFO)

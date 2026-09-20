@@ -115,6 +115,7 @@ object SlteIcons {
     val AtSign: ImageVector = Icons.Outlined.AlternateEmail
     val Amount: ImageVector = Icons.Outlined.AttachMoney
     val Coupon: ImageVector = Icons.Outlined.ConfirmationNumber
+    val GiftCard: ImageVector = Icons.Outlined.CardGiftcard
 
     val OrderPending: ImageVector = Icons.Outlined.Schedule
     val OrderCompleted: ImageVector = Icons.Outlined.CheckCircle

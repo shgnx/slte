@@ -8,6 +8,7 @@ import com.slte.app.data.local.ThemePreference
 import com.slte.app.data.repository.AuthRepository
 import com.slte.app.data.repository.SubscribeRepository
 import com.slte.app.kernel.KernelProxy
+import com.slte.app.ui.component.SubmitTip
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.Locale
 import javax.inject.Inject
@@ -44,10 +45,7 @@ sealed interface ChangePasswordState {
     data class Editing(
         val form: ChangePasswordForm = ChangePasswordForm(),
         val submitting: Boolean = false,
-        val errorMessageRes: Int? = null,
     ) : ChangePasswordState
-
-    object Succeeded : ChangePasswordState
 }
 
 @HiltViewModel
@@ -71,6 +69,9 @@ constructor(
 
     private val _changePasswordState = MutableStateFlow<ChangePasswordState>(ChangePasswordState.Closed)
     val changePasswordState: StateFlow<ChangePasswordState> = _changePasswordState.asStateFlow()
+
+    private val _tip = MutableStateFlow<SubmitTip?>(null)
+    val tip: StateFlow<SubmitTip?> = _tip.asStateFlow()
 
     init {
         loadRemindSettings()
@@ -188,7 +189,7 @@ constructor(
 
     private fun MutableStateFlow<ChangePasswordState>.updateEditing(transform: (ChangePasswordForm) -> ChangePasswordForm) {
         val current = value as? ChangePasswordState.Editing ?: return
-        value = current.copy(form = transform(current.form), errorMessageRes = null)
+        value = current.copy(form = transform(current.form))
     }
 
     fun submitChangePassword() {
@@ -203,34 +204,27 @@ constructor(
                 else -> null
             }
         if (error != null) {
-            _changePasswordState.value = state.copy(errorMessageRes = error)
+            _tip.value = SubmitTip(messageRes = error)
             return
         }
-        _changePasswordState.value = state.copy(submitting = true, errorMessageRes = null)
+        _changePasswordState.value = state.copy(submitting = true)
         viewModelScope.launch {
             authRepository
                 .changePassword(form.oldPassword, form.newPassword)
                 .onSuccess {
-                    _changePasswordState.value = ChangePasswordState.Succeeded
+                    _changePasswordState.value = ChangePasswordState.Closed
+                    _tip.value = SubmitTip(messageRes = R.string.settings_change_pwd_success)
                 }.onFailure {
                     val editing = _changePasswordState.value as? ChangePasswordState.Editing
                     if (editing != null) {
-                        _changePasswordState.value =
-                            editing.copy(
-                                submitting = false,
-                                errorMessageRes = R.string.settings_change_pwd_failed,
-                            )
+                        _changePasswordState.value = editing.copy(submitting = false)
                     }
+                    _tip.value = SubmitTip(messageRes = R.string.settings_change_pwd_failed)
                 }
         }
     }
 
-    fun consumeChangePasswordSuccess() {
-        _changePasswordState.value = ChangePasswordState.Closed
-    }
-
-    fun consumeChangePasswordError() {
-        val editing = _changePasswordState.value as? ChangePasswordState.Editing ?: return
-        _changePasswordState.value = editing.copy(errorMessageRes = null)
+    fun clearTip() {
+        _tip.value = null
     }
 }

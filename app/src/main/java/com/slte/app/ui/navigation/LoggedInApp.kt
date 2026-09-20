@@ -71,6 +71,7 @@ fun LoggedInApp(
         pageStack = pageStack,
         onPendingPaymentTradeNo = { pendingPaymentTradeNo = it },
     )
+    GiftCardRedeemHost(viewModels = viewModels)
 
     val transitionSpec =
         remember {
@@ -103,6 +104,7 @@ fun LoggedInApp(
             Page.Profile ->
                 ProfilePageContent(
                     profileViewModel = viewModels.profile,
+                    giftCardViewModel = viewModels.giftCard,
                     onBack = ::popPage,
                     onOrders = { preload.enterPage(PendingNav.Orders) },
                     onInvite = { preload.enterPage(PendingNav.Invite) },
@@ -145,6 +147,7 @@ fun LoggedInApp(
                 PlansPageContent(
                     plansViewModel = viewModels.plans,
                     purchaseViewModel = viewModels.purchase,
+                    giftCardViewModel = viewModels.giftCard,
                     onBack = ::popPage,
                     onGoToOrders = {
                         viewModels.purchase.goBack()

@@ -256,6 +256,11 @@ class XboardAuthApi(
         }
     }
 
+    override suspend fun redeemGiftCard(code: String) {
+        AdapterExecute.typed { userApi.redeemGiftCard(XboardGiftCardRedeemRequest(code)) }
+        AppLog.i("SLTE-Api", "redeemGiftCard success")
+    }
+
     override suspend fun fetchInviteInfo(): InviteInfo {
         val response = AdapterExecute.typed { userApi.fetchInviteInfo() }
         val data = response.data ?: throw ApiException("获取邀请信息失败", ApiErrors.INVITE_INFO)

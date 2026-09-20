@@ -1,6 +1,5 @@
 package com.slte.app.ui.screen.invite
 
-import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slte.app.R
@@ -10,6 +9,7 @@ import com.slte.app.domain.model.CommissionRecord
 import com.slte.app.domain.model.InviteCodeInfo
 import com.slte.app.domain.model.InviteInfo
 import com.slte.app.domain.model.InviteStat
+import com.slte.app.ui.component.SubmitTip
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -40,7 +40,7 @@ data class InviteData(
     val isGenerating: Boolean = false,
 
     val isSubmitting: Boolean = false,
-    @StringRes val toastRes: Int? = null,
+    val tip: SubmitTip? = null,
     val sheet: InviteSheet = InviteSheet.None,
     val withdrawMethods: WithdrawMethodsState = WithdrawMethodsState.Loading,
 )
@@ -127,19 +127,19 @@ constructor(
                     .onSuccess { success ->
                         if (success) {
                             refresh()
-                            _data.update { it.copy(isGenerating = false, toastRes = R.string.invite_success_generate) }
+                            _data.update { it.copy(isGenerating = false, tip = SubmitTip(messageRes = R.string.invite_success_generate)) }
                         } else {
-                            _data.update { it.copy(isGenerating = false, toastRes = R.string.invite_error_generate) }
+                            _data.update { it.copy(isGenerating = false, tip = SubmitTip(messageRes = R.string.invite_error_generate)) }
                         }
                     }.onFailure { e ->
 
-                        val toastRes =
+                        val tip =
                             if (e is ApiException && e.message?.contains("上限") == true) {
-                                R.string.invite_error_generate_limit
+                                SubmitTip(messageRes = R.string.invite_error_generate_limit)
                             } else {
-                                R.string.invite_error_generate
+                                SubmitTip(messageRes = R.string.invite_error_generate)
                             }
-                        _data.update { it.copy(isGenerating = false, toastRes = toastRes) }
+                        _data.update { it.copy(isGenerating = false, tip = tip) }
                     }
             }
     }
@@ -161,13 +161,13 @@ constructor(
                 .transferCommission(capped)
                 .onSuccess { success ->
                     if (success) {
-                        _data.update { it.copy(sheet = InviteSheet.None, toastRes = R.string.invite_success_transfer) }
+                        _data.update { it.copy(sheet = InviteSheet.None, tip = SubmitTip(messageRes = R.string.invite_success_transfer)) }
                         refresh()
                     } else {
-                        _data.update { it.copy(toastRes = R.string.invite_error_transfer) }
+                        _data.update { it.copy(tip = SubmitTip(messageRes = R.string.invite_error_transfer)) }
                     }
                 }.onFailure {
-                    _data.update { it.copy(toastRes = R.string.invite_error_transfer) }
+                    _data.update { it.copy(tip = SubmitTip(messageRes = R.string.invite_error_transfer)) }
                 }
             _data.update { it.copy(isSubmitting = false) }
         }
@@ -184,13 +184,13 @@ constructor(
                 .withdrawCommission(method, account)
                 .onSuccess { success ->
                     if (success) {
-                        _data.update { it.copy(sheet = InviteSheet.None, toastRes = R.string.invite_success_withdraw) }
+                        _data.update { it.copy(sheet = InviteSheet.None, tip = SubmitTip(messageRes = R.string.invite_success_withdraw)) }
                         refresh()
                     } else {
-                        _data.update { it.copy(toastRes = R.string.invite_error_withdraw) }
+                        _data.update { it.copy(tip = SubmitTip(messageRes = R.string.invite_error_withdraw)) }
                     }
                 }.onFailure {
-                    _data.update { it.copy(toastRes = R.string.invite_error_withdraw) }
+                    _data.update { it.copy(tip = SubmitTip(messageRes = R.string.invite_error_withdraw)) }
                 }
             _data.update { it.copy(isSubmitting = false) }
         }
@@ -204,5 +204,5 @@ constructor(
 
     fun hideWithdrawSheet() = _data.update { it.copy(sheet = InviteSheet.None) }
 
-    fun clearToast() = _data.update { it.copy(toastRes = null) }
+    fun clearTip() = _data.update { it.copy(tip = null) }
 }

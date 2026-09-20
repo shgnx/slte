@@ -83,6 +83,8 @@ interface AuthApi {
 
     suspend fun cancelOrder(tradeNo: String)
 
+    suspend fun redeemGiftCard(code: String)
+
     suspend fun fetchInviteInfo(): InviteInfo
 
     suspend fun generateInviteCode(): Boolean

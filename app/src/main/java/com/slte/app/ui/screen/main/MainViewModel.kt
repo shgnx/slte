@@ -123,8 +123,8 @@ constructor(
         }
     }
 
-    fun refresh() {
-        viewModelScope.launch { subscriptionUpdater.refresh(_data) }
+    fun refresh(force: Boolean = false) {
+        viewModelScope.launch { subscriptionUpdater.refresh(_data, force = force) }
     }
 
     fun updateSubscription() {

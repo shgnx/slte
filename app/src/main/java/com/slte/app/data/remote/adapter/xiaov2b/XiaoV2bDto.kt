@@ -227,3 +227,8 @@ data class XiaoV2bChangePasswordRequest(
     @SerialName("new_password")
     val newPassword: String,
 )
+
+@Serializable
+data class XiaoV2bGiftCardRedeemRequest(
+    val giftcard: String,
+)

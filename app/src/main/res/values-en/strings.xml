@@ -290,6 +290,17 @@
     <string name="period_onetime">One-time</string>
     <string name="period_reset">Traffic reset</string>
 
+    <!-- Gift Card -->
+    <string name="gift_card_title">Redeem Gift Card</string>
+    <string name="gift_card_subtitle">Enter a gift card code to claim the rewards</string>
+    <string name="gift_card_code_hint">Gift card code</string>
+    <string name="gift_card_redeem">Redeem</string>
+    <string name="gift_card_success_toast">Gift card redeemed</string>
+    <string name="error_gift_card_invalid">Gift card code is invalid or expired</string>
+    <string name="error_gift_card_used">This gift card has already been used</string>
+    <string name="error_gift_card_unavailable">You are not eligible for this gift card</string>
+    <string name="error_gift_card_failed">Redemption failed, try again later</string>
+
     <!-- API error messages -->
     <string name="api_error_bad_response">Unexpected server response</string>
     <string name="api_error_empty_data">Empty server response</string>

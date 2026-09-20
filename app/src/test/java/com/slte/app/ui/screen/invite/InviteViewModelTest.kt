@@ -5,6 +5,7 @@ import com.slte.app.data.repository.InviteRepository
 import com.slte.app.domain.model.InviteInfo
 import com.slte.app.domain.model.InviteStat
 import com.slte.app.support.MainDispatcherRule
+import com.slte.app.ui.component.SubmitTip
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -85,7 +86,7 @@ class InviteViewModelTest {
         advanceUntilIdle()
 
         assertEquals(InviteSheet.None, vm.data.value.sheet)
-        assertEquals(R.string.invite_success_transfer, vm.data.value.toastRes)
+        assertEquals(SubmitTip(messageRes = R.string.invite_success_transfer), vm.data.value.tip)
         assertTrue("提交结束后应复位提交中", !vm.data.value.isSubmitting)
     }
 
@@ -101,6 +102,6 @@ class InviteViewModelTest {
         advanceUntilIdle()
 
         assertEquals("失败不应关闭弹窗", InviteSheet.Transfer, vm.data.value.sheet)
-        assertEquals(R.string.invite_error_transfer, vm.data.value.toastRes)
+        assertEquals(SubmitTip(messageRes = R.string.invite_error_transfer), vm.data.value.tip)
     }
 }

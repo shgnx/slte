@@ -187,9 +187,12 @@ constructor(
         }
     }
 
-    suspend fun refresh(data: MutableStateFlow<DashboardData>) {
+    suspend fun refresh(
+        data: MutableStateFlow<DashboardData>,
+        force: Boolean = false,
+    ) {
         data.update { it.copy(isRefreshing = true) }
-        subscribeRepository.fetchSubscribeInfo().fold(
+        subscribeRepository.fetchSubscribeInfo(force = force).fold(
             onSuccess = { dataWriter.applySubscribeInfo(data, it, errorMessageRes = null) },
             onFailure = { e ->
                 val resId =

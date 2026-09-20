@@ -11,6 +11,7 @@ object ApiErrors {
     val CREATE_ORDER = R.string.api_error_create_order
     val ORDER_DETAIL = R.string.api_error_order_detail
     val COUPON_INVALID = R.string.error_coupon_invalid
+    val GIFT_CARD = R.string.error_gift_card_failed
     val CHECKOUT = R.string.api_error_checkout
     val NETWORK = R.string.error_network
 
@@ -48,4 +49,5 @@ object Stickers {
     const val UPDATE = "stickers/update.tgs"
     const val FORCE_UPDATE = "stickers/force_update.tgs"
     const val INVITE = "stickers/invite.tgs"
+    const val GIFT_CARD = "stickers/gift_card.tgs"
 }

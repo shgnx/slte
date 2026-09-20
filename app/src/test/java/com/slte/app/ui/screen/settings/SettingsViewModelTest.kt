@@ -8,6 +8,7 @@ import com.slte.app.data.repository.SubscribeRepository
 import com.slte.app.domain.model.User
 import com.slte.app.kernel.KernelProxy
 import com.slte.app.support.MainDispatcherRule
+import com.slte.app.ui.component.SubmitTip
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -17,6 +18,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -115,13 +117,13 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         val state = vm.changePasswordState.value as ChangePasswordState.Editing
-        assertEquals(R.string.settings_change_pwd_mismatch, state.errorMessageRes)
+        assertEquals(SubmitTip(messageRes = R.string.settings_change_pwd_mismatch), vm.tip.value)
         assertFalse(state.submitting)
         coVerify(exactly = 0) { authRepository.changePassword(any(), any()) }
     }
 
     @Test
-    fun `修改密码：成功后进入 Succeeded 且关闭弹窗`() = runTest(mainRule.dispatcher) {
+    fun `修改密码：成功后关闭弹窗并提示成功`() = runTest(mainRule.dispatcher) {
         coEvery { subscribeRepository.fetchUserInfo(force = true) } returns Result.success(user())
         coEvery { authRepository.changePassword(any(), any()) } returns Result.success(Unit)
         val vm = viewModel()
@@ -134,10 +136,11 @@ class SettingsViewModelTest {
         vm.submitChangePassword()
         advanceUntilIdle()
 
-        assertEquals(ChangePasswordState.Succeeded, vm.changePasswordState.value)
-
-        vm.consumeChangePasswordSuccess()
         assertEquals(ChangePasswordState.Closed, vm.changePasswordState.value)
+        assertEquals(SubmitTip(messageRes = R.string.settings_change_pwd_success), vm.tip.value)
+
+        vm.clearTip()
+        assertNull(vm.tip.value)
     }
 
     @Test
@@ -155,7 +158,7 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         val state = vm.changePasswordState.value as ChangePasswordState.Editing
-        assertEquals(R.string.settings_change_pwd_failed, state.errorMessageRes)
+        assertEquals(SubmitTip(messageRes = R.string.settings_change_pwd_failed), vm.tip.value)
         assertFalse(state.submitting)
     }
 }

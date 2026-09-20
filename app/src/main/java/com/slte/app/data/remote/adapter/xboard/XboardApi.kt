@@ -1,6 +1,7 @@
 package com.slte.app.data.remote.adapter.xboard
 
 import com.slte.app.data.remote.api.ApiHeaders
+import kotlinx.serialization.json.JsonElement
 import okhttp3.ResponseBody
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -141,4 +142,9 @@ interface XboardUserRetrofit {
     suspend fun changePassword(
         @Body request: XboardChangePasswordRequest,
     ): XboardResponse<Boolean>
+
+    @POST("user/gift-card/redeem")
+    suspend fun redeemGiftCard(
+        @Body request: XboardGiftCardRedeemRequest,
+    ): XboardResponse<JsonElement>
 }

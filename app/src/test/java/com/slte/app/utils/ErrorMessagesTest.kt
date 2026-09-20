@@ -44,6 +44,33 @@ class ErrorMessagesTest {
     }
 
     @Test
+    fun `礼品卡后端文案映射为本地化提示`() {
+        assertEquals(
+            R.string.error_gift_card_used,
+            ErrorMessages.giftCardMessageRes("The gift card has already been used by this user"),
+        )
+        assertEquals(R.string.error_gift_card_used, ErrorMessages.giftCardMessageRes("该礼品卡已被使用"))
+        assertEquals(R.string.error_gift_card_invalid, ErrorMessages.giftCardMessageRes("The gift card does not exist"))
+        assertEquals(R.string.error_gift_card_invalid, ErrorMessages.giftCardMessageRes("The gift card has expired"))
+        assertEquals(R.string.error_gift_card_invalid, ErrorMessages.giftCardMessageRes("兑换码不可用"))
+        assertEquals(R.string.error_gift_card_unavailable, ErrorMessages.giftCardMessageRes("您已达到此礼品卡的使用限制"))
+        assertEquals(R.string.error_gift_card_unavailable, ErrorMessages.giftCardMessageRes("Not suitable gift card type"))
+        assertEquals(R.string.error_gift_card_failed, ErrorMessages.giftCardMessageRes("Unknown gift card type"))
+        assertEquals(R.string.error_gift_card_failed, ErrorMessages.giftCardMessageRes("Save failed"))
+    }
+
+    @Test
+    fun `礼品卡用户不存在不误判为兑换码无效`() {
+        assertEquals(null, ErrorMessages.giftCardMessageRes("The user does not exist"))
+    }
+
+    @Test
+    fun `礼品卡未识别文案返回空以展示后端原文`() {
+        assertEquals(null, ErrorMessages.giftCardMessageRes("some brand new backend wording"))
+        assertEquals(null, ErrorMessages.giftCardMessageRes(null))
+    }
+
+    @Test
     fun `存在未支付订单的识别`() {
         assertTrue(ErrorMessages.isPendingOrderMessage("您有未完成的订单"))
         assertTrue(ErrorMessages.isPendingOrderMessage("存在未支付订单"))

@@ -19,6 +19,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slte.app.R
 import com.slte.app.ui.component.SlteScaffold
+import com.slte.app.ui.component.SubmitTipHost
 import com.slte.app.ui.component.rememberToast
 import com.slte.app.ui.theme.SlteIcons
 import com.slte.app.ui.theme.SlteType
@@ -153,20 +154,8 @@ fun SettingsScreen(
     }
 
     val toast = rememberToast()
-    val changePasswordSucceeded = changePasswordState is ChangePasswordState.Succeeded
-    LaunchedEffect(changePasswordSucceeded) {
-        if (changePasswordSucceeded) {
-            toast.show(R.string.settings_change_pwd_success)
-            viewModel.consumeChangePasswordSuccess()
-        }
-    }
-
-    LaunchedEffect(editing?.errorMessageRes) {
-        editing?.errorMessageRes?.let { res ->
-            toast.show(res, centered = true)
-            viewModel.consumeChangePasswordError()
-        }
-    }
+    val tip = viewModel.tip.collectAsStateWithLifecycle().value
+    SubmitTipHost(tip = tip, onTipShown = viewModel::clearTip)
 
     LaunchedEffect(data.tunStackSwitchCount) {
         if (data.tunStackSwitchCount > 0) {

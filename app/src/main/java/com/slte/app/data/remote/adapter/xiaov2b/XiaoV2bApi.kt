@@ -141,4 +141,9 @@ interface XiaoV2bUserRetrofit {
     suspend fun changePassword(
         @Body request: XiaoV2bChangePasswordRequest,
     ): XiaoV2bResponse<Boolean>
+
+    @POST("user/redeemgiftcard")
+    suspend fun redeemGiftCard(
+        @Body request: XiaoV2bGiftCardRedeemRequest,
+    ): XiaoV2bResponse<Boolean>
 }

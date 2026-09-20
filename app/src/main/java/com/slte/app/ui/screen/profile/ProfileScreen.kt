@@ -17,8 +17,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slte.app.R
 import com.slte.app.domain.model.isPlanValid
+import com.slte.app.ui.component.CircleIconButton
 import com.slte.app.ui.component.SlteScaffold
+import com.slte.app.ui.component.SubmitTipHost
 import com.slte.app.ui.component.UsageCard
+import com.slte.app.ui.screen.giftcard.GiftCardRedeemSheet
+import com.slte.app.ui.screen.giftcard.GiftCardRedeemViewModel
 import com.slte.app.ui.theme.SlteIcons
 import com.slte.app.utils.Dimens
 import com.slte.app.utils.FormatUtils
@@ -34,14 +38,24 @@ fun ProfileScreen(
     onAbout: () -> Unit = {},
     onLogout: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel(),
+    giftCardViewModel: GiftCardRedeemViewModel = hiltViewModel(),
 ) {
     val data by viewModel.data.collectAsStateWithLifecycle()
     val errorMessageRes by viewModel.errorMessageRes.collectAsStateWithLifecycle()
+    val giftCardState by giftCardViewModel.state.collectAsStateWithLifecycle()
+    val giftCardTip by giftCardViewModel.tip.collectAsStateWithLifecycle()
     var showLogoutSheet by rememberSaveable { mutableStateOf(false) }
 
     SlteScaffold(
         title = stringResource(R.string.profile_title),
         onBack = onBack,
+        actions = {
+            CircleIconButton(
+                icon = SlteIcons.GiftCard,
+                description = stringResource(R.string.gift_card_title),
+                onClick = giftCardViewModel::open,
+            )
+        },
     ) { innerPadding ->
         LazyColumn(
             modifier =
@@ -139,4 +153,15 @@ fun ProfileScreen(
             onDismiss = { showLogoutSheet = false },
         )
     }
+
+    if (giftCardState.visible) {
+        GiftCardRedeemSheet(
+            state = giftCardState,
+            onCodeChange = giftCardViewModel::updateCode,
+            onSubmit = giftCardViewModel::submit,
+            onDismiss = giftCardViewModel::dismiss,
+        )
+    }
+
+    SubmitTipHost(tip = giftCardTip, onTipShown = giftCardViewModel::clearTip)
 }

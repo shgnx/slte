@@ -108,5 +108,40 @@ object ErrorMessages {
 
     fun mapServerError(backendMessage: String?): Int = R.string.error_server_load
 
+    fun giftCardMessageRes(backendMessage: String?): Int? = when {
+        backendMessage == null -> null
+
+        backendMessage.contains("已使用", ignoreCase = true) ||
+            backendMessage.contains("被使用", ignoreCase = true) ||
+            backendMessage.contains("使用过", ignoreCase = true) ||
+            backendMessage.contains("already been used", ignoreCase = true) ||
+            backendMessage.contains("already used", ignoreCase = true) -> R.string.error_gift_card_used
+
+        backendMessage.contains("使用限制", ignoreCase = true) ||
+            backendMessage.contains("使用条件", ignoreCase = true) ||
+            backendMessage.contains("不满足", ignoreCase = true) ||
+            backendMessage.contains("limit", ignoreCase = true) ||
+            backendMessage.contains("not suitable", ignoreCase = true) ||
+            backendMessage.contains("eligible", ignoreCase = true) ||
+            backendMessage.contains("condition", ignoreCase = true) -> R.string.error_gift_card_unavailable
+
+        backendMessage.contains("不存在", ignoreCase = true) ||
+            backendMessage.contains("不可用", ignoreCase = true) ||
+            backendMessage.contains("停用", ignoreCase = true) ||
+            backendMessage.contains("无效", ignoreCase = true) ||
+            backendMessage.contains("过期", ignoreCase = true) ||
+            backendMessage.contains("长度", ignoreCase = true) ||
+            backendMessage.contains("gift card does not exist", ignoreCase = true) ||
+            backendMessage.contains("gift card has expired", ignoreCase = true) ||
+            backendMessage.contains("invalid", ignoreCase = true) ||
+            backendMessage.contains("expired", ignoreCase = true) ||
+            backendMessage.contains("length", ignoreCase = true) -> R.string.error_gift_card_invalid
+
+        backendMessage.contains("unknown", ignoreCase = true) ||
+            backendMessage.contains("save failed", ignoreCase = true) -> R.string.error_gift_card_failed
+
+        else -> null
+    }
+
     fun networkError(): Int = R.string.error_network
 }

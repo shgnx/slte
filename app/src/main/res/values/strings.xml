@@ -287,6 +287,17 @@
     <string name="period_onetime">一次性</string>
     <string name="period_reset">流量重置</string>
 
+    <!-- Gift Card -->
+    <string name="gift_card_title">礼品卡兑换</string>
+    <string name="gift_card_subtitle">输入兑换码，奖励将自动发放到账户</string>
+    <string name="gift_card_code_hint">请输入兑换码</string>
+    <string name="gift_card_redeem">兑换</string>
+    <string name="gift_card_success_toast">礼品卡兑换成功</string>
+    <string name="error_gift_card_invalid">兑换码无效或已过期</string>
+    <string name="error_gift_card_used">该礼品卡已被使用</string>
+    <string name="error_gift_card_unavailable">不满足使用条件或已达使用限制</string>
+    <string name="error_gift_card_failed">兑换失败，请稍后重试</string>
+
     <!-- API error messages -->
     <string name="api_error_bad_response">服务器响应格式异常</string>
     <string name="api_error_empty_data">服务器返回数据为空</string>

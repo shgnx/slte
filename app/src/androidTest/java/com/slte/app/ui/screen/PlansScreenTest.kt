@@ -8,8 +8,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.slte.app.data.remote.api.dto.PlanInfoDto
+import com.slte.app.data.repository.GiftCardRepository
 import com.slte.app.data.repository.OrderRepository
 import com.slte.app.support.FakeAuthApi
+import com.slte.app.ui.screen.giftcard.GiftCardRedeemViewModel
 import com.slte.app.ui.theme.SlteTheme
 import org.junit.Rule
 import org.junit.Test
@@ -23,6 +25,7 @@ class PlansScreenTest {
     private val api = FakeAuthApi()
     private val repository = OrderRepository(api)
     private val viewModel = PlansViewModel(repository)
+    private val giftCardViewModel = GiftCardRedeemViewModel(GiftCardRepository(api))
     private val purchaseViewModel =
         PurchaseViewModel(
             couponChecker = CouponChecker(repository),
@@ -51,6 +54,7 @@ class PlansScreenTest {
                     onBack = {},
                     viewModel = viewModel,
                     purchaseViewModel = purchaseViewModel,
+                    giftCardViewModel = giftCardViewModel,
                 )
             }
         }
@@ -73,6 +77,7 @@ class PlansScreenTest {
                     onBack = {},
                     viewModel = viewModel,
                     purchaseViewModel = purchaseViewModel,
+                    giftCardViewModel = giftCardViewModel,
                 )
             }
         }

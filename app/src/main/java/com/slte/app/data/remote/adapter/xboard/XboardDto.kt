@@ -220,3 +220,8 @@ fun XboardCommissionRecordData.toDomain() = CommissionRecord(
     getAmount = getAmount,
     createdAt = createdAt,
 )
+
+@Serializable
+data class XboardGiftCardRedeemRequest(
+    val code: String,
+)

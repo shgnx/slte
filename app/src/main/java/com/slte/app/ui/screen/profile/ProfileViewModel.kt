@@ -67,8 +67,8 @@ constructor(
         }
     }
 
-    fun refresh() {
-        loadProfile()
+    fun refresh(force: Boolean = false) {
+        loadProfile(force)
     }
 
     fun retry() {
@@ -79,7 +79,7 @@ constructor(
         authRepository.logout()
     }
 
-    private fun loadProfile() {
+    private fun loadProfile(force: Boolean = false) {
         if (loading) return
         loading = true
         _errorMessageRes.value = null
@@ -87,8 +87,8 @@ constructor(
             if (_data.value.subscribeInfo == null) {
                 _data.update { it.copy(isLoading = true) }
             }
-            val userResult = async { subscribeRepository.fetchUserInfo() }
-            val subscribeResult = async { subscribeRepository.fetchSubscribeInfo() }
+            val userResult = async { subscribeRepository.fetchUserInfo(force = force) }
+            val subscribeResult = async { subscribeRepository.fetchSubscribeInfo(force = force) }
 
             userResult.await().fold(
                 onSuccess = { user ->

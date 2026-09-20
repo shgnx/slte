@@ -1,6 +1,5 @@
 package com.slte.app.ui.screen.invite
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -15,11 +14,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import com.slte.app.R
-import com.slte.app.ui.component.SlteButton
-import com.slte.app.ui.component.SlteButtonStyle
 import com.slte.app.ui.component.SlteInput
 import com.slte.app.ui.component.SlteInputSize
-import com.slte.app.ui.component.SlteSheet
+import com.slte.app.ui.component.SlteSubmitSheet
 import com.slte.app.ui.theme.SlteIcons
 import com.slte.app.utils.Dimens
 
@@ -35,9 +32,13 @@ fun TransferSheet(
     var amountText by remember { mutableStateOf("") }
     val haptic = LocalHapticFeedback.current
 
-    SlteSheet(
+    SlteSubmitSheet(
         title = stringResource(R.string.invite_transfer_title),
         subtitle = stringResource(R.string.invite_transfer_subtitle, stringResource(R.string.app_name)),
+        submitText = stringResource(R.string.invite_transfer_confirm),
+        submitting = isSubmitting,
+        submitEnabled = amountText.toDoubleOrNull()?.let { it > 0 } == true,
+        onSubmit = { amountText.toDoubleOrNull()?.let { onConfirm(it) } },
         onDismiss = onDismiss,
     ) {
         ReadOnlyAmountField(cents = availableBalance)
@@ -51,17 +52,6 @@ fun TransferSheet(
             icon = SlteIcons.Amount,
             keyboardType = KeyboardType.Decimal,
             size = SlteInputSize.Compact,
-        )
-
-        Spacer(modifier = Modifier.height(Dimens.gap.xl))
-
-        SlteButton(
-            text = stringResource(R.string.invite_transfer_confirm),
-            onClick = { amountText.toDoubleOrNull()?.let { onConfirm(it) } },
-            modifier = Modifier.fillMaxWidth(),
-            style = SlteButtonStyle.Primary,
-            enabled = amountText.toDoubleOrNull()?.let { it > 0 } == true,
-            loading = isSubmitting,
         )
     }
 }
