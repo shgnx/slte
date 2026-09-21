@@ -37,6 +37,10 @@ on:
         description: 追加白名单域名（逗号分隔）
         required: false
         default: ''
+      crispWebsiteId:
+        description: 客服 ID（Crisp Website ID，填了即启用应用内在线客服，留空不启用）
+        required: false
+        default: ''
       notificationTitle:
         description: 通知栏标题（留空跟随应用名）
         required: false
@@ -169,6 +173,8 @@ jobs:
           SLTE_API_TYPE: ${{ inputs.apiType }}
           SLTE_REMOTE_CONFIG_URLS: ${{ inputs.remoteConfigUrls }}
           SLTE_ALLOWED_DOMAINS: ${{ inputs.allowedDomains }}
+          SLTE_CRISP_WEBSITE_ID: ${{ inputs.crispWebsiteId }}
+          SLTE_CRISP_ENABLED: ${{ inputs.crispWebsiteId != '' }}
           SLTE_NOTIFICATION_TITLE: ${{ inputs.notificationTitle }}
           SLTE_NOTIFICATION_TRAFFIC: ${{ inputs.notificationTraffic }}
 
