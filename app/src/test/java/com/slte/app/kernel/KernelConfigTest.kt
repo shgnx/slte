@@ -37,9 +37,9 @@ class KernelConfigTest {
     private val reporter = KernelFaultReporter(mainRule.dispatcher)
 
     private val email = "a@b.c"
-    private val apiBaseUrl = "https://app.slte.me"
+    private val apiBaseUrl = "https://app.example.com"
     private val subscribeUrl = apiBaseUrl + BuildConfig.SUBSCRIBE_PATH
-    private val expectedDomains = listOf("slte.me", "shgn.me")
+    private val expectedDomains = listOf("example.com", "example.net")
 
     private val yaml =
         """
@@ -56,7 +56,7 @@ class KernelConfigTest {
 
     private fun config(
         baseUrl: String = apiBaseUrl,
-        domains: List<String> = listOf("shgn.me"),
+        domains: List<String> = listOf("example.net"),
     ): KernelConfig {
         every { context.filesDir } returns tmp.root
         every { manager.profile() } returns profiles

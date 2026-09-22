@@ -104,9 +104,9 @@ class SessionStoreTest {
 
     @Test
     fun `clear 清空会话与全部缓存`() {
-        store.save(authData = "jwt", email = "e@x.com", subscribeToken = "sub")
+        store.save(authData = "jwt", email = "user@example.com", subscribeToken = "sub")
         store.saveSubscribeInfo(SubscribeInfo("p", 1L, 1L, 0L))
-        store.saveUserInfo(User(id = "jwt", displayName = "e@x.com"))
+        store.saveUserInfo(User(id = "jwt", displayName = "user@example.com"))
         store.saveSpeedResults(mapOf("a" to 1))
         store.saveSubscribeUrl("https://example.com/sub")
 
@@ -122,7 +122,7 @@ class SessionStoreTest {
 
     @Test
     fun `clearDataCache 保留会话只清数据`() {
-        store.save(authData = "jwt", email = "e@x.com", subscribeToken = "sub")
+        store.save(authData = "jwt", email = "user@example.com", subscribeToken = "sub")
         store.saveSubscribeInfo(SubscribeInfo("p", 1L, 1L, 0L))
 
         store.clearDataCache()

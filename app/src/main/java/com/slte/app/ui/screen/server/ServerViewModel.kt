@@ -5,17 +5,23 @@ import androidx.lifecycle.viewModelScope
 import com.slte.app.data.repository.ServerRepository
 import com.slte.app.data.repository.SubscribeRepository
 import com.slte.app.kernel.KernelProxy
+import com.slte.app.kernel.KernelServerInfo
+import com.slte.app.kernel.NodeNameResolver
+import com.slte.app.kernel.SelectionType
 import com.slte.app.kernel.cachedSpeedResults
 import com.slte.app.kernel.groupByTypeCurrentNode
 import com.slte.app.kernel.groupByTypeDelay
+import com.slte.app.kernel.nodeNames
 import com.slte.app.kernel.selectAuto
 import com.slte.app.kernel.selectFallback
 import com.slte.app.kernel.selectNode
+import com.slte.app.kernel.serverInfo
 import com.slte.app.kernel.speedTestProgressiveAndCache
 import com.slte.app.utils.Constants
 import com.slte.app.utils.ErrorMessages
 import com.slte.app.utils.extractCountryCode
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,31 +46,108 @@ constructor(
     private val _errorMessageRes = MutableStateFlow<Int?>(null)
     val errorMessageRes: StateFlow<Int?> = _errorMessageRes.asStateFlow()
 
+    private val refreshSeq = AtomicInteger()
+
+    private val kernelTagToType =
+        mapOf(
+            "vless" to "vless",
+            "vmess" to "vmess",
+            "trojan" to "trojan",
+            "ss" to "shadowsocks",
+            "hy" to "hysteria",
+            "hy2" to "hysteria2",
+            "tuic" to "tuic",
+            "anytls" to "anytls",
+            "socks" to "socks",
+        )
+
     init {
 
-        val cachedDelays = kernelProxy.cachedSpeedResults()
-        serverRepository.getCachedServers()?.let { applyNodes(it, cachedDelays) }
+        serverRepository.getCachedServers()?.let { applyNodes(it) }
         refreshSpecialNodes()
     }
 
     private fun refreshSpecialNodes() {
+        val seq = refreshSeq.incrementAndGet()
         viewModelScope.launch {
             val auto = kernelProxy.groupByTypeCurrentNode("URLTest")
             val fallback = kernelProxy.groupByTypeCurrentNode("Fallback")
+            val info = kernelProxy.serverInfo()
+            val kernelNames = kernelProxy.nodeNames()
+            val cachedDelays = kernelProxy.cachedSpeedResults()
+            if (seq != refreshSeq.get()) return@launch
             _data.update { state ->
+                val index = kernelNameIndex(kernelNames)
+                val nodes =
+                    state.nodes.map { node ->
+                        val proxyName = resolveKernelName(index, node)
+                        node.copy(
+                            proxyName = proxyName,
+                            delay = proxyName?.let { cachedDelays?.get(it) } ?: node.delay,
+                        )
+                    }
                 state.copy(
-                    autoNode = auto,
-                    fallbackNode = fallback,
-                    autoNodeCountryCode = countryOf(auto),
-                    fallbackNodeCountryCode = countryOf(fallback),
+                    nodes = nodes,
+                    autoNode = auto?.let(NodeNameResolver::displayName),
+                    fallbackNode = fallback?.let(NodeNameResolver::displayName),
+                    autoNodeCountryCode = countryOf(nodes, auto),
+                    fallbackNodeCountryCode = countryOf(nodes, fallback),
+                    selectedNodeId = selectedNodeIdOf(nodes, info) ?: state.selectedNodeId,
                 )
             }
         }
     }
 
-    private fun countryOf(nodeName: String?): String? = nodeName?.let { name ->
-        _data.value.nodes
-            .firstOrNull { it.name == name }
+    private fun kernelNameIndex(kernelNames: List<String>): Map<String, List<String>> = kernelNames
+        .groupBy { NodeNameResolver.of(it) }
+        .filterKeys { it.isNotEmpty() }
+
+    private fun resolveKernelName(
+        index: Map<String, List<String>>,
+        node: NodeItem,
+    ): String? {
+        val candidates = index[NodeNameResolver.of(node.name)] ?: return null
+        candidates.singleOrNull()?.let { return it }
+
+        val type = node.type.lowercase()
+        return candidates
+            .filter { candidate -> NodeNameResolver.protocolTag(candidate)?.let(kernelTagToType::get) == type }
+            .singleOrNull()
+    }
+
+    private fun selectedNodeIdOf(
+        nodes: List<NodeItem>,
+        info: KernelServerInfo?,
+    ): Int? {
+        val current = info?.node
+        return when (info?.selection) {
+            SelectionType.AUTO -> 0
+            SelectionType.FALLBACK -> -1
+            SelectionType.MANUAL ->
+                current?.let { name ->
+                    nodes.firstOrNull { it.proxyName == name }?.id
+                        ?: nodes.firstOrNull { it.name == name }?.id
+                        ?: matchedNode(nodes, name)?.id
+                }
+            null -> null
+        }
+    }
+
+    private fun matchedNode(
+        nodes: List<NodeItem>,
+        name: String,
+    ): NodeItem? {
+        val key = NodeNameResolver.of(name)
+        if (key.isEmpty()) return null
+        return nodes.filter { NodeNameResolver.of(it.name) == key }.singleOrNull()
+    }
+
+    private fun countryOf(
+        nodes: List<NodeItem>,
+        nodeName: String?,
+    ): String? = nodeName?.let { name ->
+        nodes
+            .firstOrNull { it.proxyName == name || it.name == name }
             ?.countryCode
             ?.takeIf { it != "XX" }
     }
@@ -98,10 +181,7 @@ constructor(
         }
     }
 
-    private fun applyNodes(
-        servers: List<com.slte.app.domain.model.ServerNode>,
-        delays: Map<String, Int>? = null,
-    ) {
+    private fun applyNodes(servers: List<com.slte.app.domain.model.ServerNode>) {
         val existing = _data.value.nodes.associate { it.name to it.delay }
         val nodes =
             servers
@@ -113,7 +193,7 @@ constructor(
                         countryCode = extractCountryCode(server.name),
                         type = server.type.name,
                         host = server.host,
-                        delay = delays?.get(server.name) ?: existing[server.name],
+                        delay = existing[server.name],
                     )
                 }
         _data.update { it.copy(nodes = nodes, isLoading = false) }
@@ -138,9 +218,11 @@ constructor(
             }
             else -> {
                 val node = _data.value.nodes.firstOrNull { it.id == nodeId } ?: return
-                _data.update { it.copy(selectedNodeId = nodeId) }
                 viewModelScope.launch {
-                    kernelProxy.selectNode(node.name)
+                    if (kernelProxy.selectNode(node.proxyName ?: node.name)) {
+                        _data.update { it.copy(selectedNodeId = nodeId) }
+                    }
+                    refreshSpecialNodes()
                 }
             }
         }
@@ -159,11 +241,15 @@ constructor(
 
                         val nodes =
                             state.nodes.map { node ->
-                                val d = partial[node.name]
+                                val d = partial[node.proxyName ?: node.name]
                                 if (d != null && d != Constants.DELAY_TIMEOUT && node.name !in state.testedNodes) node.copy(delay = d) else node
                             }
 
-                        val tested = partial.filterValues { it != Constants.DELAY_TIMEOUT }.keys
+                        val tested =
+                            state.nodes.mapNotNull { node ->
+                                val d = partial[node.proxyName ?: node.name]
+                                node.name.takeIf { d != null && d != Constants.DELAY_TIMEOUT }
+                            }
                         state.copy(nodes = nodes, testedNodes = state.testedNodes + tested)
                     }
                 }
@@ -172,11 +258,12 @@ constructor(
             _data.update { state ->
                 val nodes =
                     state.nodes.map { node ->
-                        val d = delays[node.name]
+                        val key = node.proxyName ?: node.name
+                        val d = delays[key]
                         val delay =
                             when {
                                 d != null && d != Constants.DELAY_TIMEOUT -> d
-                                d == Constants.DELAY_TIMEOUT -> cached?.get(node.name) ?: d
+                                d == Constants.DELAY_TIMEOUT -> cached?.get(key) ?: d
                                 else -> node.delay
                             }
                         node.copy(delay = delay)
@@ -243,4 +330,5 @@ data class NodeItem(
     val type: String = "",
     val host: String = "",
     val delay: Int? = null,
+    val proxyName: String? = null,
 )

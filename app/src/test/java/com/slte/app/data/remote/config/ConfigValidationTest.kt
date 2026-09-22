@@ -14,8 +14,8 @@ class ConfigValidationTest {
         assertTrue(ConfigValidation.isValidApiUrl("https://api.example.com", allowed))
         assertTrue(ConfigValidation.isValidApiUrl("https://api.example.com:8443", allowed))
         assertFalse(ConfigValidation.isValidApiUrl("http://api.example.com", allowed))
-        assertFalse(ConfigValidation.isValidApiUrl("https://evil.com", allowed))
-        assertFalse(ConfigValidation.isValidApiUrl("https://example.com.evil.com", allowed))
+        assertFalse(ConfigValidation.isValidApiUrl("https://evil.example", allowed))
+        assertFalse(ConfigValidation.isValidApiUrl("https://example.com.evil.example", allowed))
         assertFalse(ConfigValidation.isValidApiUrl("not a url", allowed))
         assertFalse(ConfigValidation.isValidApiUrl("", allowed))
     }
@@ -25,7 +25,7 @@ class ConfigValidationTest {
         assertTrue(ConfigValidation.isValidDomain("example.com", allowed))
         assertTrue(ConfigValidation.isValidDomain("api.example.com", allowed))
         assertFalse(ConfigValidation.isValidDomain("single", allowed))
-        assertFalse(ConfigValidation.isValidDomain("evil.com", allowed))
+        assertFalse(ConfigValidation.isValidDomain("evil.example", allowed))
         assertFalse(ConfigValidation.isValidDomain("", allowed))
         assertFalse(ConfigValidation.isValidDomain("a..b", allowed))
     }
@@ -98,9 +98,9 @@ class ConfigValidationTest {
         val encoded =
             java.util.Base64
                 .getEncoder()
-                .encodeToString("https://evil.com".toByteArray())
+                .encodeToString("https://evil.example".toByteArray())
         val decoded = ConfigValidation.decodeApiCandidate(encoded)
-        assertEquals("https://evil.com", decoded)
+        assertEquals("https://evil.example", decoded)
         assertFalse(ConfigValidation.isValidApiUrl(decoded, allowed))
         val httpEncoded =
             java.util.Base64

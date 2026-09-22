@@ -94,6 +94,8 @@ object AppLog {
             m.groupValues[1] + masked
         }
         .replace(URL_CREDENTIALS_PATTERN, "$1***@")
+        .replace(PATH_TOKEN_PATTERN) { m -> "/" + m.groupValues[1] + "/***" }
+        .replace(PATH_LONG_SEGMENT_PATTERN) { m -> m.groupValues[1] + "/***" }
         .replace(EMAIL_PATTERN) { m ->
             val value = m.value
             val at = value.indexOf('@')
@@ -118,6 +120,12 @@ object AppLog {
         )
 
     private val URL_CREDENTIALS_PATTERN = Regex("(?i)\\b([a-z][a-z0-9+.\\-]*://)([^\\s/]+)@")
+
+    private val PATH_TOKEN_PATTERN =
+        Regex("(?i)/(s|sub|subs|subscribe|link|token|t)/([^/\\s\"'?#]{12,})")
+
+    private val PATH_LONG_SEGMENT_PATTERN =
+        Regex("(^|[^:/])/([^/\\s\"'?#.{}]{16,})(?=/|\\?|#|\\s|$)")
 
     private val EMAIL_PATTERN = Regex("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}")
 

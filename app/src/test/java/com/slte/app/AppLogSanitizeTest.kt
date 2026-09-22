@@ -34,6 +34,28 @@ class AppLogSanitizeTest {
         assertEquals("file:///data/local/tmp/app.log", AppLog.sanitize("file:///data/local/tmp/app.log"))
         assertEquals("节点 hk-01 延迟 120ms", AppLog.sanitize("节点 hk-01 延迟 120ms"))
         assertEquals("DIRECT 连接 1.2.3.4:443 ok", AppLog.sanitize("DIRECT 连接 1.2.3.4:443 ok"))
+        assertEquals("/api/v1/client/subscribe", AppLog.sanitize("/api/v1/client/subscribe"))
+        assertEquals("/s/1234", AppLog.sanitize("/s/1234"))
+    }
+
+    @Test
+    fun masksSubscribeTokenInPath() {
+        val raw = "非白名单主机，已跳过凭据注入: /s/fedcba9876543210fedcba9876543210"
+        val masked = AppLog.sanitize(raw)
+        assertEquals("非白名单主机，已跳过凭据注入: /s/***", masked)
+        assertFalse(masked.contains("fedcba9876543210fedcba9876543210"))
+        assertFalse(AppLog.sanitize("https://sub.example.com/s/AbCdEf0123456789").contains("AbCdEf0123456789"))
+        assertFalse(AppLog.sanitize("https://sub.example.com/subscribe/AbCdEf0123456789").contains("AbCdEf0123456789"))
+        assertFalse(AppLog.sanitize("https://sub.example.com/link/AbCdEf0123456789?x=1").contains("AbCdEf0123456789"))
+        assertFalse(AppLog.sanitize("/s/AbCdEf0123456789+tail==").contains("+tail=="))
+        assertFalse(AppLog.sanitize("/s/AbCdEf0123456789%2Btail").contains("%2Btail"))
+        assertFalse(AppLog.sanitize("https://sub.example.com/fedcba9876543210fedcba9876543210").contains("fedcba9876543210fedcba9876543210"))
+        assertFalse(AppLog.sanitize("https://sub.example.com/x/fedcba9876543210fedcba9876543210?u=1").contains("fedcba9876543210fedcba9876543210"))
+        assertEquals("https://***/s/***", AppLog.sanitize("https://sub.example.com/s/AbCdEf0123456789"))
+        assertEquals(
+            "onServiceConnected: ComponentInfo{com.example.app/com.github.kr328.clash.service.RemoteService}",
+            AppLog.sanitize("onServiceConnected: ComponentInfo{com.example.app/com.github.kr328.clash.service.RemoteService}"),
+        )
     }
 
     @Test

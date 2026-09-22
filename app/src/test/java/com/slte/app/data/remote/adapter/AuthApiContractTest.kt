@@ -52,7 +52,7 @@ private const val EXPIRED_AT = 1_800_000_000L
 private const val TRANSFER = 400L
 private const val TRADE_NO = "TN-1"
 private const val TOTAL_AMOUNT = 5_000
-private const val SUBSCRIBE_URL = "https://app.slte.me/api/v1/client/subscribe?token=x"
+private const val SUBSCRIBE_URL = "https://app.example.com/api/v1/client/subscribe?token=x"
 
 private class XboardContract : BackendContract {
     override val name = "xboard"

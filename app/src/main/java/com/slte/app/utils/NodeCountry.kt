@@ -1,19 +1,93 @@
 package com.slte.app.utils
 
 internal fun extractCountryCode(name: String): String {
-    val lowered = name.lowercase()
+    val folded = foldFullWidth(name)
+    val lowered = folded.lowercase()
     COUNTRY_KEYWORDS.forEach { (keyword, code) ->
         if (lowered.contains(keyword)) return code
     }
-    return name
-        .split('-', '–', '_', ' ', '|', '·', '[', ']', '(', ')', '#')
-        .map { it.trim().uppercase() }
-        .firstOrNull { it.length == 2 && it in ISO_CODES }
-        ?: "XX"
+    flagEmojiCode(folded)?.let { return it }
+    delimitedIsoCode(folded)?.let { return it }
+    return "XX"
 }
+
+private fun foldFullWidth(text: String): String {
+    if (text.none { it == '\u3000' || it.code in 0xFF01..0xFF5E }) return text
+    val builder = StringBuilder(text.length)
+    text.forEach { char ->
+        builder.append(
+            when {
+                char == '\u3000' -> ' '
+                char.code in 0xFF01..0xFF5E -> (char.code - 0xFEE0).toChar()
+                else -> char
+            },
+        )
+    }
+    return builder.toString()
+}
+
+private const val REGIONAL_INDICATOR_LEAD = 0xD83C
+private val REGIONAL_INDICATOR_TAIL = 0xDDE6..0xDDFF
+
+private fun flagEmojiCode(name: String): String? {
+    var index = 0
+    while (index + 3 < name.length) {
+        val lead = name[index].code
+        val first = name[index + 1].code
+        val secondLead = name[index + 2].code
+        val second = name[index + 3].code
+        if (lead == REGIONAL_INDICATOR_LEAD &&
+            first in REGIONAL_INDICATOR_TAIL &&
+            secondLead == REGIONAL_INDICATOR_LEAD &&
+            second in REGIONAL_INDICATOR_TAIL
+        ) {
+            val code =
+                buildString(2) {
+                    append(('A'.code + first - REGIONAL_INDICATOR_TAIL.first).toChar())
+                    append(('A'.code + second - REGIONAL_INDICATOR_TAIL.first).toChar())
+                }
+            if (code in ISO_CODES) return code
+        }
+        index++
+    }
+    return null
+}
+
+private fun delimitedIsoCode(name: String): String? {
+    for (index in 0 until name.length - 1) {
+        val first = name[index]
+        val second = name[index + 1]
+        if (!first.isAsciiLetter() || !second.isAsciiLetter()) continue
+        val before = if (index == 0) null else name[index - 1]
+        val after = if (index + 2 >= name.length) null else name[index + 2]
+        if (before != null && before.isAsciiLetter()) continue
+        if (after != null && after.isAsciiLetter()) continue
+        val code = "${first.uppercaseChar()}${second.uppercaseChar()}"
+        if (code in DATA_UNIT_CODES && followsNumber(name, index)) continue
+        if (code in ISO_CODES) return code
+    }
+    return null
+}
+
+private fun followsNumber(
+    name: String,
+    index: Int,
+): Boolean {
+    var position = index - 1
+    if (position >= 0 && name[position] == ' ') position--
+    return position >= 0 && name[position].isDigit()
+}
+
+private fun Char.isAsciiLetter(): Boolean = this in 'a'..'z' || this in 'A'..'Z'
+
+private val DATA_UNIT_CODES = setOf("GB", "TB", "MB", "KB", "PB", "EB", "ZB", "YB")
 
 private val SIMPLIFIED_COUNTRY_KEYWORDS =
     linkedMapOf(
+        "印度尼西亚" to "ID",
+        "印度尼西亞" to "ID",
+        "白俄罗斯" to "BY",
+        "白俄羅斯" to "BY",
         "香港" to "HK",
         "hong kong" to "HK",
         "hongkong" to "HK",
@@ -46,6 +120,10 @@ private val SIMPLIFIED_COUNTRY_KEYWORDS =
         "korea" to "KR",
         "seoul" to "KR",
         "台湾" to "TW",
+        "臺灣" to "TW",
+        "臺北" to "TW",
+        "臺中" to "TW",
+        "臺南" to "TW",
         "台北" to "TW",
         "taiwan" to "TW",
         "taipei" to "TW",
@@ -86,12 +164,14 @@ private val SIMPLIFIED_COUNTRY_KEYWORDS =
         "泰国" to "TH",
         "曼谷" to "TH",
         "thailand" to "TH",
+        "bangkok" to "TH",
         "越南" to "VN",
         "胡志明" to "VN",
         "vietnam" to "VN",
         "印尼" to "ID",
         "雅加达" to "ID",
         "indonesia" to "ID",
+        "jakarta" to "ID",
         "阿根廷" to "AR",
         "argentina" to "AR",
         "阿联酋" to "AE",
@@ -146,6 +226,189 @@ private val SIMPLIFIED_COUNTRY_KEYWORDS =
         "美" to "US",
         "英" to "GB",
         "韩" to "KR",
+        "缅甸" to "MM",
+        "巴基斯坦" to "PK",
+        "孟加拉" to "BD",
+        "尼泊尔" to "NP",
+        "斯里兰卡" to "LK",
+        "柬埔寨" to "KH",
+        "老挝" to "LA",
+        "文莱" to "BN",
+        "沙特" to "SA",
+        "卡塔尔" to "QA",
+        "科威特" to "KW",
+        "阿曼" to "OM",
+        "尼日利亚" to "NG",
+        "肯尼亚" to "KE",
+        "摩洛哥" to "MA",
+        "突尼斯" to "TN",
+        "阿尔及利亚" to "DZ",
+        "秘鲁" to "PE",
+        "哥伦比亚" to "CO",
+        "委内瑞拉" to "VE",
+        "厄瓜多尔" to "EC",
+        "巴拿马" to "PA",
+        "哥斯达黎加" to "CR",
+        "危地马拉" to "GT",
+        "捷克" to "CZ",
+        "匈牙利" to "HU",
+        "罗马尼亚" to "RO",
+        "保加利亚" to "BG",
+        "希腊" to "GR",
+        "葡萄牙" to "PT",
+        "丹麦" to "DK",
+        "比利时" to "BE",
+        "卢森堡" to "LU",
+        "冰岛" to "IS",
+        "爱沙尼亚" to "EE",
+        "拉脱维亚" to "LV",
+        "立陶宛" to "LT",
+        "塞尔维亚" to "RS",
+        "克罗地亚" to "HR",
+        "斯洛文尼亚" to "SI",
+        "斯洛伐克" to "SK",
+        "摩尔多瓦" to "MD",
+        "格鲁吉亚" to "GE",
+        "亚美尼亚" to "AM",
+        "阿塞拜疆" to "AZ",
+        "乌兹别克" to "UZ",
+        "吉尔吉斯" to "KG",
+        "新西兰" to "NZ",
+        "斐济" to "FJ",
+        "釜山" to "KR",
+        "札幌" to "JP",
+        "名古屋" to "JP",
+        "福冈" to "JP",
+        "河内" to "VN",
+        "马尼拉" to "PH",
+        "金边" to "KH",
+        "乌兰巴托" to "MN",
+        "阿布扎比" to "AE",
+        "利雅得" to "SA",
+        "多哈" to "QA",
+        "约翰内斯堡" to "ZA",
+        "开普敦" to "ZA",
+        "内罗毕" to "KE",
+        "拉各斯" to "NG",
+        "卡萨布兰卡" to "MA",
+        "波哥大" to "CO",
+        "利马" to "PE",
+        "圣地亚哥" to "CL",
+        "墨西哥城" to "MX",
+        "布宜诺斯艾利斯" to "AR",
+        "蒙特利尔" to "CA",
+        "温哥华" to "CA",
+        "芝加哥" to "US",
+        "达拉斯" to "US",
+        "迈阿密" to "US",
+        "慕尼黑" to "DE",
+        "柏林" to "DE",
+        "曼彻斯特" to "GB",
+        "爱丁堡" to "GB",
+        "巴塞罗那" to "ES",
+        "罗马尼亚" to "RO",
+        "罗马" to "IT",
+        "里斯本" to "PT",
+        "布鲁塞尔" to "BE",
+        "日内瓦" to "CH",
+        "布拉格" to "CZ",
+        "布达佩斯" to "HU",
+        "哥本哈根" to "DK",
+        "布加勒斯特" to "RO",
+        "索菲亚" to "BG",
+        "雅典" to "GR",
+        "贝尔格莱德" to "RS",
+        "萨格勒布" to "HR",
+        "卢布尔雅那" to "SI",
+        "布拉迪斯拉发" to "SK",
+        "基辅" to "UA",
+        "明斯克" to "BY",
+        "雷克雅未克" to "IS",
+        "myanmar" to "MM",
+        "pakistan" to "PK",
+        "manila" to "PH",
+        "hanoi" to "VN",
+        "kuala lumpur" to "MY",
+        "cairo" to "EG",
+        "tel aviv" to "IL",
+        "riyadh" to "SA",
+        "sao paulo" to "BR",
+        "buenos aires" to "AR",
+        "santiago" to "CL",
+        "bogota" to "CO",
+        "mexico city" to "MX",
+        "johannesburg" to "ZA",
+        "nairobi" to "KE",
+        "kyiv" to "UA",
+        "vienna" to "AT",
+        "zurich" to "CH",
+        "brussels" to "BE",
+        "lisbon" to "PT",
+        "barcelona" to "ES",
+        "milan" to "IT",
+        "berlin" to "DE",
+        "munich" to "DE",
+        "manchester" to "GB",
+        "melbourne" to "AU",
+        "auckland" to "NZ",
+        "vancouver" to "CA",
+        "montreal" to "CA",
+        "chicago" to "US",
+        "dallas" to "US",
+        "miami" to "US",
+        "united states" to "US",
+        "united kingdom" to "GB",
+        "costa rica" to "CR",
+        "guatemala" to "GT",
+        "busan" to "KR",
+        "prague" to "CZ",
+        "czech" to "CZ",
+        "greece" to "GR",
+        "athens" to "GR",
+        "denmark" to "DK",
+        "copenhagen" to "DK",
+        "iceland" to "IS",
+        "romania" to "RO",
+        "belgium" to "BE",
+        "portugal" to "PT",
+        "上海" to "CN",
+        "北京" to "CN",
+        "深圳" to "CN",
+        "广州" to "CN",
+        "杭州" to "CN",
+        "成都" to "CN",
+        "重庆" to "CN",
+        "南京" to "CN",
+        "武汉" to "CN",
+        "西安" to "CN",
+        "青岛" to "CN",
+        "大连" to "CN",
+        "天津" to "CN",
+        "厦门" to "CN",
+        "苏州" to "CN",
+        "长沙" to "CN",
+        "高雄" to "TW",
+        "特拉维夫" to "IL",
+        "开罗" to "EG",
+        "德黑兰" to "IR",
+        "奥斯陆" to "NO",
+        "里约热内卢" to "BR",
+        "墨尔本" to "AU",
+        "奥克兰" to "NZ",
+        "惠灵顿" to "NZ",
+        "cambodia" to "KH",
+        "istanbul" to "TR",
+        "new york" to "US",
+        "los angeles" to "US",
+        "toronto" to "CA",
+        "new zealand" to "NZ",
+        "cairo" to "EG",
+        "madrid" to "ES",
+        "geneva" to "CH",
+        "cape town" to "ZA",
+        "ho chi minh" to "VN",
+        "doha" to "QA",
+        "oslo" to "NO",
     )
 
 private val TRADITIONAL_COUNTRY_KEYWORDS =
@@ -193,6 +456,107 @@ private val TRADITIONAL_COUNTRY_KEYWORDS =
         "哈薩克" to "KZ",
         "澳門" to "MO",
         "韓" to "KR",
+        "緬甸" to "MM",
+        "斯里蘭卡" to "LK",
+        "尼泊爾" to "NP",
+        "老撾" to "LA",
+        "文萊" to "BN",
+        "卡塔爾" to "QA",
+        "尼日利亞" to "NG",
+        "肯尼亞" to "KE",
+        "阿爾及利亞" to "DZ",
+        "秘魯" to "PE",
+        "哥倫比亞" to "CO",
+        "厄瓜多爾" to "EC",
+        "巴拿馬" to "PA",
+        "羅馬尼亞" to "RO",
+        "保加利亞" to "BG",
+        "希臘" to "GR",
+        "丹麥" to "DK",
+        "比利時" to "BE",
+        "盧森堡" to "LU",
+        "冰島" to "IS",
+        "愛沙尼亞" to "EE",
+        "拉脫維亞" to "LV",
+        "立陶宛" to "LT",
+        "塞爾維亞" to "RS",
+        "克羅地亞" to "HR",
+        "斯洛文尼亞" to "SI",
+        "斯洛伐克" to "SK",
+        "摩爾多瓦" to "MD",
+        "格魯吉亞" to "GE",
+        "亞美尼亞" to "AM",
+        "阿塞拜疆" to "AZ",
+        "烏茲別克" to "UZ",
+        "吉爾吉斯" to "KG",
+        "新西蘭" to "NZ",
+        "斐濟" to "FJ",
+        "釜山" to "KR",
+        "札幌" to "JP",
+        "名古屋" to "JP",
+        "福岡" to "JP",
+        "河內" to "VN",
+        "馬尼拉" to "PH",
+        "金邊" to "KH",
+        "烏蘭巴托" to "MN",
+        "阿布扎比" to "AE",
+        "利雅得" to "SA",
+        "多哈" to "QA",
+        "約翰內斯堡" to "ZA",
+        "開普敦" to "ZA",
+        "內羅畢" to "KE",
+        "拉各斯" to "NG",
+        "卡薩布蘭卡" to "MA",
+        "波哥大" to "CO",
+        "利馬" to "PE",
+        "聖地亞哥" to "CL",
+        "墨西哥城" to "MX",
+        "布宜諾斯艾利斯" to "AR",
+        "蒙特利爾" to "CA",
+        "溫哥華" to "CA",
+        "芝加哥" to "US",
+        "達拉斯" to "US",
+        "邁阿密" to "US",
+        "慕尼黑" to "DE",
+        "柏林" to "DE",
+        "曼徹斯特" to "GB",
+        "愛丁堡" to "GB",
+        "巴塞羅那" to "ES",
+        "羅馬尼亞" to "RO",
+        "羅馬" to "IT",
+        "里斯本" to "PT",
+        "布魯塞爾" to "BE",
+        "日內瓦" to "CH",
+        "布拉格" to "CZ",
+        "布達佩斯" to "HU",
+        "哥本哈根" to "DK",
+        "布加勒斯特" to "RO",
+        "索菲亞" to "BG",
+        "雅典" to "GR",
+        "貝爾格萊德" to "RS",
+        "薩格勒布" to "HR",
+        "盧布爾雅那" to "SI",
+        "布拉迪斯拉發" to "SK",
+        "基輔" to "UA",
+        "明斯克" to "BY",
+        "雷克雅未克" to "IS",
+        "廣州" to "CN",
+        "重慶" to "CN",
+        "武漢" to "CN",
+        "青島" to "CN",
+        "廈門" to "CN",
+        "長沙" to "CN",
+        "多倫多" to "CA",
+        "開羅" to "EG",
+        "特拉維夫" to "IL",
+        "德黑蘭" to "IR",
+        "奧斯陸" to "NO",
+        "里約熱內盧" to "BR",
+        "墨爾本" to "AU",
+        "奧克蘭" to "NZ",
+        "惠靈頓" to "NZ",
+        "日內瓦" to "CH",
+        "雪梨" to "AU",
     )
 
 private val COUNTRY_KEYWORDS: Map<String, String> =
@@ -203,46 +567,36 @@ private val COUNTRY_KEYWORDS: Map<String, String> =
 
 private val ISO_CODES =
     setOf(
-        "HK",
-        "TW",
-        "MO",
-        "JP",
-        "KR",
-        "SG",
-        "MY",
-        "TH",
-        "VN",
-        "PH",
-        "ID",
-        "IN",
-        "AE",
-        "TR",
-        "DE",
-        "GB",
-        "FR",
-        "NL",
-        "US",
-        "CA",
-        "BR",
-        "AR",
-        "RU",
-        "UA",
-        "PL",
-        "AT",
-        "CH",
-        "IT",
-        "ES",
-        "SE",
-        "NO",
-        "FI",
-        "IE",
-        "IL",
-        "KZ",
-        "MN",
-        "EG",
-        "ZA",
-        "MX",
-        "CL",
-        "AU",
-        "NZ",
+        "AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO",
+        "AQ", "AR", "AS", "AT", "AU", "AW", "AX", "AZ",
+        "BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI",
+        "BJ", "BL", "BM", "BN", "BO", "BQ", "BR", "BS",
+        "BT", "BV", "BW", "BY", "BZ", "CA", "CC", "CD",
+        "CF", "CG", "CH", "CI", "CK", "CL", "CM", "CN",
+        "CO", "CR", "CU", "CV", "CW", "CX", "CY", "CZ",
+        "DE", "DJ", "DK", "DM", "DO", "DZ", "EC", "EE",
+        "EG", "EH", "ER", "ES", "ET", "FI", "FJ", "FK",
+        "FM", "FO", "FR", "GA", "GB", "GD", "GE", "GF",
+        "GG", "GH", "GI", "GL", "GM", "GN", "GP", "GQ",
+        "GR", "GS", "GT", "GU", "GW", "GY", "HK", "HM",
+        "HN", "HR", "HT", "HU", "ID", "IE", "IL", "IM",
+        "IN", "IO", "IQ", "IR", "IS", "IT", "JE", "JM",
+        "JO", "JP", "KE", "KG", "KH", "KI", "KM", "KN",
+        "KP", "KR", "KW", "KY", "KZ", "LA", "LB", "LC",
+        "LI", "LK", "LR", "LS", "LT", "LU", "LV", "LY",
+        "MA", "MC", "MD", "ME", "MF", "MG", "MH", "MK",
+        "ML", "MM", "MN", "MO", "MP", "MQ", "MR", "MS",
+        "MT", "MU", "MV", "MW", "MX", "MY", "MZ", "NA",
+        "NC", "NE", "NF", "NG", "NI", "NL", "NO", "NP",
+        "NR", "NU", "NZ", "OM", "PA", "PE", "PF", "PG",
+        "PH", "PK", "PL", "PM", "PN", "PR", "PS", "PT",
+        "PW", "PY", "QA", "RE", "RO", "RS", "RU", "RW",
+        "SA", "SB", "SC", "SD", "SE", "SG", "SH", "SI",
+        "SJ", "SK", "SL", "SM", "SN", "SO", "SR", "SS",
+        "ST", "SV", "SX", "SY", "SZ", "TC", "TD", "TF",
+        "TG", "TH", "TJ", "TK", "TL", "TM", "TN", "TO",
+        "TR", "TT", "TV", "TW", "TZ", "UA", "UG", "UM",
+        "US", "UY", "UZ", "VA", "VC", "VE", "VG", "VI",
+        "VN", "VU", "WF", "WS", "XK", "YE", "YT", "ZA",
+        "ZM", "ZW",
     )

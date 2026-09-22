@@ -9,6 +9,7 @@ import com.slte.app.di.IoDispatcher
 import com.slte.app.kernel.KernelConfig
 import com.slte.app.kernel.KernelManager
 import com.slte.app.kernel.KernelProxy
+import com.slte.app.kernel.NodeNameResolver
 import com.slte.app.kernel.ensureGlobalSelection
 import com.slte.app.kernel.fetchPublicIp
 import com.slte.app.kernel.runAutoSpeedTest
@@ -100,10 +101,8 @@ constructor(
                 kernelProxy.ensurePersistedMode()
                 kernelProxy.serverInfo()?.let { info ->
                     _data.update { state ->
-                        state.copy(
-
-                            serverName = if (state.hasPlan) info.node ?: state.serverName else state.serverName,
-                        )
+                        val node = info.node?.let { name -> NodeNameResolver.displayName(name) } ?: state.serverName
+                        state.copy(serverName = if (state.hasPlan) node else state.serverName)
                     }
                 }
                 kernelProxy.proxyMode()?.let { mode ->

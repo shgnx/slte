@@ -4,21 +4,58 @@ import com.github.kr328.clash.core.model.ProxySort
 import com.github.kr328.clash.core.model.TunnelState
 import com.slte.app.utils.AppLog
 import com.slte.app.utils.Constants
+import kotlinx.coroutines.delay
 
 suspend fun KernelProxy.selectNode(name: String): Boolean = safe(false, "selectNode") {
     val clash = manager.clash() ?: return@safe false
     val group = selectorGroup() ?: return@safe false
 
-    val proxy =
-        clash
-            .queryProxyGroup(group, ProxySort.Default)
-            .proxies
-            .firstOrNull { it.name == name } ?: return@safe false
+    val members = clash.queryProxyGroup(group, ProxySort.Default).proxies.filterNot { it.isGroup }
+    val resolved = NodeNameResolver.resolve(members.map { it.name }, name)
+    if (resolved == null) {
+        AppLog.w(
+            "SLTE-Kernel",
+            "selectNode: 未匹配到节点 group=$group target=$name members=${members.size} " +
+                "sample=${members.take(NODE_NAME_SAMPLE).joinToString(",") { it.name }}",
+        )
+        return@safe false
+    }
 
-    val result = clash.patchSelector(group, proxy.name)
-    AppLog.d("SLTE-Kernel", "selectNode: group=$group proxy=${proxy.name} result=$result")
-    patchGlobalIfGlobal(proxy.name)
-    result
+    val result = clash.patchSelector(group, resolved)
+    var now = clash.queryProxyGroup(group, ProxySort.Default).now
+    var attempt = 0
+    while (now != resolved && attempt < VERIFY_ATTEMPTS) {
+        delay(VERIFY_DELAY_MS)
+        now = clash.queryProxyGroup(group, ProxySort.Default).now
+        attempt++
+    }
+    AppLog.d("SLTE-Kernel", "selectNode: group=$group proxy=$resolved result=$result now=$now")
+    if (now != resolved) {
+        AppLog.w("SLTE-Kernel", "selectNode: 切换未生效 group=$group target=$resolved now=$now")
+        return@safe false
+    }
+
+    patchGlobalIfGlobal(resolved)
+    true
+}
+
+private const val NODE_NAME_SAMPLE = 5
+
+private const val VERIFY_ATTEMPTS = 2
+
+private const val VERIFY_DELAY_MS = 120L
+
+suspend fun KernelProxy.nodeNames(): List<String> = safe(emptyList(), "nodeNames") {
+    val clash = manager.clash() ?: return@safe emptyList()
+    clash
+        .queryProxyGroupNames(excludeNotSelectable = false)
+        .asSequence()
+        .filterNot { it == "GLOBAL" }
+        .flatMap { group -> clash.queryProxyGroup(group, ProxySort.Default).proxies.asSequence() }
+        .filterNot { it.isGroup || it.name == "DIRECT" || it.name == "REJECT" }
+        .map { it.name }
+        .distinct()
+        .toList()
 }
 
 suspend fun KernelProxy.selectAuto(): Boolean = safe(false, "selectAuto") {

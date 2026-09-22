@@ -41,17 +41,6 @@ on:
         description: 客服 ID（Crisp Website ID，填了即启用应用内在线客服，留空不启用）
         required: false
         default: ''
-      notificationTitle:
-        description: 通知栏标题（留空跟随应用名）
-        required: false
-        default: ''
-      notificationTraffic:
-        description: 通知栏流量显示
-        type: choice
-        options:
-          - 'true'
-          - 'false'
-        default: 'true'
       buildType:
         description: 构建类型（release 需仓库 Secrets 签名四件套）
         type: choice
@@ -175,8 +164,6 @@ jobs:
           SLTE_ALLOWED_DOMAINS: ${{ inputs.allowedDomains }}
           SLTE_CRISP_WEBSITE_ID: ${{ inputs.crispWebsiteId }}
           SLTE_CRISP_ENABLED: ${{ inputs.crispWebsiteId != '' }}
-          SLTE_NOTIFICATION_TITLE: ${{ inputs.notificationTitle }}
-          SLTE_NOTIFICATION_TRAFFIC: ${{ inputs.notificationTraffic }}
 
           SLTE_VERSION_NAME: ${{ inputs.versionName }}
           SLTE_VERSION_CODE: ${{ inputs.versionCode }}

@@ -611,7 +611,7 @@ class DtoBoundaryTest {
         val raw =
             """
             {"plan_id":7,"expired_at":1800000000,"transfer_enable":1024,"u":10,"d":20,"reset_day":5,
-            "subscribe_url":"https://app.slte.me/api/v1/client/subscribe?token=x","plan":{"name":"P1"}}
+            "subscribe_url":"https://app.example.com/api/v1/client/subscribe?token=x","plan":{"name":"P1"}}
             """.trimIndent()
 
         val xboard = json.decodeFromString<XboardSubscribeData>(raw).toDomainSubscribeInfo()
