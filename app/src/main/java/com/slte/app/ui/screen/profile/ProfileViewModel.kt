@@ -6,6 +6,7 @@ import com.slte.app.data.local.SessionManager
 import com.slte.app.data.repository.AuthRepository
 import com.slte.app.data.repository.SubscribeRepository
 import com.slte.app.domain.model.SubscribeInfo
+import com.slte.app.domain.model.isPlanValid
 import com.slte.app.domain.usecase.DaysUntilExpiryUseCase
 import com.slte.app.utils.ErrorMessages
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,6 +24,12 @@ data class ProfileData(
     val email: String = "",
     val balance: String = "0.00",
 
+    val planName: String = "",
+    val usedBytes: Long = 0L,
+    val totalBytes: Long = 0L,
+    val hasPlan: Boolean = false,
+    val isValid: Boolean = false,
+    val expiredAt: Long = 0L,
     val daysUntilExpired: Int? = null,
 )
 
@@ -53,11 +60,9 @@ constructor(
                 ?: ""
         if (cachedUser != null || cachedSubscribe != null) {
             _data.update {
-                it.copy(
-                    subscribeInfo = cachedSubscribe,
+                it.withPlanFields(cachedSubscribe).copy(
                     email = email,
                     balance = cachedUser?.balance ?: "0.00",
-                    daysUntilExpired = expiryDays(cachedSubscribe),
                     isLoading = false,
                 )
             }
@@ -96,25 +101,33 @@ constructor(
                 },
                 onFailure = { },
             )
-            subscribeResult.await().onFailure { throwable ->
-                _data.update { it.copy(isLoading = false) }
-                if (_data.value.subscribeInfo == null) {
-                    _errorMessageRes.value = ErrorMessages.forSubscribe(throwable)
-                }
-            }
+            subscribeResult.await().fold(
+                onSuccess = { applySubscribeInfo(it) },
+                onFailure = { throwable ->
+                    _data.update { it.copy(isLoading = false) }
+                    if (_data.value.subscribeInfo == null) {
+                        _errorMessageRes.value = ErrorMessages.forSubscribe(throwable)
+                    }
+                },
+            )
             loading = false
         }
     }
 
     private fun applySubscribeInfo(info: SubscribeInfo?) {
         _data.update {
-            it.copy(
-                subscribeInfo = info,
-                daysUntilExpired = expiryDays(info),
-                isLoading = if (info == null) it.isLoading else false,
-            )
+            it.withPlanFields(info).copy(isLoading = if (info == null) it.isLoading else false)
         }
     }
 
-    private fun expiryDays(info: SubscribeInfo?): Int? = info?.expiredAt?.takeIf { it > 0L }?.let { expiryUseCase(it) }
+    private fun ProfileData.withPlanFields(info: SubscribeInfo?): ProfileData = copy(
+        subscribeInfo = info,
+        planName = info?.planName ?: "",
+        usedBytes = info?.usedTraffic ?: 0L,
+        totalBytes = info?.transferEnable ?: 0L,
+        hasPlan = info?.hasPlan == true,
+        isValid = isPlanValid(info),
+        expiredAt = info?.expiredAt ?: 0L,
+        daysUntilExpired = expiryUseCase(info?.expiredAt ?: 0L),
+    )
 }

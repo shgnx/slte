@@ -137,4 +137,25 @@ class ProfileViewModelTest {
 
         verify { authRepository.logout() }
     }
+
+    @Test
+    fun `套餐卡片字段与首页同一套计算`() = runTest(mainRule.dispatcher) {
+        coEvery { subscribeRepository.fetchUserInfo() } returns Result.success(user())
+        coEvery { subscribeRepository.fetchSubscribeInfo() } coAnswers {
+            publish(subscribe(expiredAt = 1_800_000_000L))
+        }
+        val vm = viewModel()
+
+        vm.refresh()
+        advanceUntilIdle()
+
+        val data = vm.data.value
+        assertEquals("进阶套餐", data.planName)
+        assertEquals(65L, data.usedBytes)
+        assertEquals(400L, data.totalBytes)
+        assertTrue("有套餐应标记 hasPlan", data.hasPlan)
+        assertTrue("有效期内的套餐应为有效", data.isValid)
+        assertEquals(1_800_000_000L, data.expiredAt)
+        assertEquals(49, data.daysUntilExpired)
+    }
 }

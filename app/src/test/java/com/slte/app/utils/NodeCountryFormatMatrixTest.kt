@@ -7,6 +7,51 @@ class NodeCountryFormatMatrixTest {
 
     private val mismatches = mutableListOf<String>()
 
+    private val styleRegions =
+        listOf(
+            Triple("香港", "HK", "🇭🇰"),
+            Triple("日本", "JP", "🇯🇵"),
+            Triple("新加坡", "SG", "🇸🇬"),
+            Triple("美国", "US", "🇺🇸"),
+            Triple("韩国", "KR", "🇰🇷"),
+            Triple("德国", "DE", "🇩🇪"),
+            Triple("英国", "GB", "🇬🇧"),
+            Triple("澳大利亚", "AU", "🇦🇺"),
+        )
+
+    private val nameStyles =
+        listOf<Pair<String, (String, String) -> String>>(
+            "横线" to { region, _ -> "$region-01" },
+            "下划线" to { region, _ -> "${region}_01" },
+            "间隔号" to { region, _ -> "$region·01" },
+            "斜杠" to { region, _ -> "$region/01" },
+            "空格" to { region, _ -> "$region 01" },
+            "直连数字" to { region, _ -> "${region}01" },
+            "协议前缀" to { region, _ -> "[vless]$region-01" },
+            "另一协议前缀" to { region, _ -> "[trojan]$region 01" },
+            "旗帜前缀" to { region, flag -> "$flag$region-01" },
+            "旗帜加装饰" to { region, flag -> "$flag $region 01 ⚡" },
+            "方括号装饰" to { region, _ -> "【$region】01" },
+            "圆括号装饰" to { region, _ -> "($region)01" },
+            "序号后缀" to { region, _ -> "$region 01 号" },
+            "倍率后缀" to { region, _ -> "${region}01 x1" },
+            "倍率中文" to { region, _ -> "${region}01 倍率1.0" },
+            "专线标注" to { region, _ -> "${region}01(专线)" },
+            "流媒体标注" to { region, _ -> "${region}01 Netflix" },
+        )
+
+    private val lineStyles =
+        listOf(
+            "IEPL",
+            "IPLC",
+            "BGP",
+            "CN2",
+            "GIA",
+            "Relay",
+            "Tier1",
+            "Premium",
+        )
+
     private fun expect(
         family: String,
         expected: String,
@@ -22,6 +67,19 @@ class NodeCountryFormatMatrixTest {
         val report = mismatches.joinToString("\n")
         mismatches.clear()
         assertEquals("识别不符的用例：\n$report", "", report)
+    }
+
+    @Test
+    fun `多机场常见命名风格组合`() {
+        styleRegions.forEach { (region, code, flag) ->
+            nameStyles.forEach { (family, build) ->
+                expect("$family/$region", code, build(region, flag))
+            }
+            lineStyles.forEach { line ->
+                expect("线路标注/$region", code, "$region-$line-01", "[vless]$region $line 01")
+            }
+        }
+        verifyAll()
     }
 
     @Test
@@ -61,7 +119,7 @@ class NodeCountryFormatMatrixTest {
             "香港-01",
             "香港_01",
             "香港·01",
-            "香港丨01",
+            "香港｜01",
             "香港|01",
             "香港／01",
             "香港.01",
@@ -84,7 +142,7 @@ class NodeCountryFormatMatrixTest {
             "【HK】01",
             "01-HK",
             "01 HK",
-            "HKˣ³",
+            "HK 03",
             "HK×3",
             "HK/IEPL/01",
         )
@@ -105,7 +163,7 @@ class NodeCountryFormatMatrixTest {
             "香港01🔥",
             "✨ 香港 01",
             "🇭🇰香港01",
-            "[vless]🚀香港丨IEPLˣ³",
+            "[vless]🚀香港-IEPL 03",
         )
         verifyAll()
     }
@@ -164,15 +222,15 @@ class NodeCountryFormatMatrixTest {
 
     @Test
     fun `旗帜 emoji 各种组合`() {
-        expect("旗帜", "HK", "🇭🇰", "🇭🇰01", "🇭🇰香港", "🇭🇰 Hong Kong 01", "[vless]🇭🇰丨IEPLˣ³")
+        expect("旗帜", "HK", "🇭🇰", "🇭🇰01", "🇭🇰香港", "🇭🇰 Hong Kong 01", "[vless]🇭🇰-IEPL 03")
         expect("旗帜", "SG", "🇸🇬", "🇸🇬01", "🇸🇬公告节点", "🇸🇬node.example.com")
         expect("旗帜", "JP", "🇯🇵", "🇯🇵JP01", "🇯🇵 日本-Tokyo-01")
-        expect("旗帜", "US", "🇺🇸", "🇺🇸US01", "🇺🇸美国丨Los Angelesˣ²")
-        expect("旗帜", "MM", "🇲🇲", "🇲🇲01", "🇲🇲缅甸丨MMˣ³")
-        expect("旗帜", "PK", "🇵🇰", "🇵🇰01", "🇵🇰巴基斯坦丨PKˣ³")
+        expect("旗帜", "US", "🇺🇸", "🇺🇸US01", "🇺🇸美国-Los Angeles 02")
+        expect("旗帜", "MM", "🇲🇲", "🇲🇲01", "🇲🇲缅甸-MM 03")
+        expect("旗帜", "PK", "🇵🇰", "🇵🇰01", "🇵🇰巴基斯坦-PK 03")
         expect("旗帜", "GB", "🇬🇧", "🇬🇧01")
         expect("旗帜", "DE", "🇩🇪", "🇩🇪01", "🇩🇪德国 Frankfurt 01")
-        expect("旗帜", "UA", "🇺🇦", "🇺🇦01", "🇺🇦乌克兰丨UAˣ¹")
+        expect("旗帜", "UA", "🇺🇦", "🇺🇦01", "🇺🇦乌克兰-UA 01")
         verifyAll()
     }
 
@@ -182,16 +240,16 @@ class NodeCountryFormatMatrixTest {
             "线路词",
             "XX",
             "IEPL01",
-            "IEPLˣ³",
+            "IEPL 03",
             "IEPL x3",
             "IPLC",
             "IPLC 2",
             "BGP01",
-            "BGPˣ²",
-            "DRT01",
-            "DRTˣ²",
-            "MIX01",
-            "MIXˣ²",
+            "BGP 02",
+            "Tier2",
+            "IPLC 03",
+            "Mixed01",
+            "Mixed 02",
             "GIA",
             "Tier1",
             "Premium",
@@ -245,16 +303,16 @@ class NodeCountryFormatMatrixTest {
         expect(
             "混合",
             "HK",
-            "[vless]🇭🇰香港丨IEPLˣ³",
+            "[vless]🇭🇰香港-IEPL 03",
             "香港 03 · HKT",
             "香港 IEPL x3",
-            "[ss]香港丨BGP²",
+            "[ss]香港-BGP 02",
         )
-        expect("混合", "JP", "🇯🇵 日本-Tokyo-01", "日本 JP｜BGP×3", "[Hy2]日本丨Osakaˣ²")
-        expect("混合", "TW", "【台湾】TW-01 ⚡", "台灣 Taipei 01", "[vless]🇨🇳台湾丨BGPˣ²")
-        expect("混合", "SG", "🇸🇬SG-01｜Premium", "[vless]新加坡丨IEPLˣ³")
-        expect("混合", "US", "[Hy2]美国丨Los Angelesˣ²", "🇺🇸美国丨MIXˣ²")
-        expect("混合", "KR", "韩国首尔 KR-01", "[vless]🇰🇷韩国丨KRˣ¹")
+        expect("混合", "JP", "🇯🇵 日本-Tokyo-01", "日本 JP｜BGP×3", "[Hy2]日本-Osaka 02")
+        expect("混合", "TW", "【台湾】TW-01 ⚡", "台灣 Taipei 01", "[vless]🇨🇳台湾-BGP 02")
+        expect("混合", "SG", "🇸🇬SG-01｜Premium", "[vless]新加坡-IEPL 03")
+        expect("混合", "US", "[Hy2]美国-Los Angeles 02", "🇺🇸美国-MIX 02")
+        expect("混合", "KR", "韩国首尔 KR-01", "[vless]🇰🇷韩国-KR 01")
         expect("混合", "CN", "CN2 GIA", "CN-上海", "上海 IEPL")
         verifyAll()
     }

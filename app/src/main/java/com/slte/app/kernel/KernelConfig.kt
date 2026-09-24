@@ -41,6 +41,9 @@ constructor(
 
     private val profileMutex = Mutex()
 
+    @Volatile
+    private var healAttemptedFor: UUID? = null
+
     private suspend fun <T> safe(
         default: T,
         operation: String,
@@ -69,6 +72,9 @@ constructor(
         if (current == null || !current.imported) {
             if (!downloadSubscribeToPending(uuid)) return@safe null
             profiles.commit(uuid)
+        } else if (healIfDefective(uuid)) {
+            AppLog.w("SLTE-Kernel", "ensureProfile: 现有配置存在重名等致命问题，已用订阅重新写入")
+            profiles.commit(uuid)
         }
         val profile = profiles.queryByUUID(uuid) ?: return@safe null
         val activeChanged = profiles.queryActive()?.uuid != uuid
@@ -89,10 +95,28 @@ constructor(
         val yaml = readSubscribeYaml() ?: return false
         val domains = directDomains().ifEmpty { return false }
         val cleaned = sanitizeOrNull(yaml, domains) ?: return false
+        if (!SubscriptionSanitizer.isKernelLoadable(cleaned)) {
+            AppLog.w("SLTE-Kernel", "downloadSubscribeToPending: 订阅存在重名等致命问题，拒绝写入")
+            return false
+        }
         val file = context.filesDir.resolve("pending/$uuid/config.yaml")
         file.parentFile?.mkdirs()
         atomicWrite(file, cleaned)
         return true
+    }
+
+    private fun importedConfigDefective(uuid: UUID): Boolean {
+        val file = context.filesDir.resolve("imported/$uuid/config.yaml")
+        if (!file.exists()) return true
+        val text = runCatching { file.readText() }.getOrNull() ?: return false
+        return !SubscriptionSanitizer.isKernelLoadable(text)
+    }
+
+    private suspend fun healIfDefective(uuid: UUID): Boolean {
+        if (!importedConfigDefective(uuid)) return false
+        if (healAttemptedFor == uuid) return false
+        healAttemptedFor = uuid
+        return downloadSubscribeToPending(uuid)
     }
 
     suspend fun updateProfile(): ProfileUpdateResult = safe(ProfileUpdateResult.FAILED, "updateProfile") {
@@ -117,6 +141,10 @@ constructor(
 
             val domains = directDomains().ifEmpty { return@withLock ProfileUpdateResult.FAILED }
             val cleaned = sanitizeOrNull(yaml, domains) ?: return@withLock ProfileUpdateResult.FAILED
+            if (!SubscriptionSanitizer.isKernelLoadable(cleaned)) {
+                AppLog.w("SLTE-Kernel", "updateProfile: 订阅存在重名等致命问题，保留现有配置")
+                return@withLock ProfileUpdateResult.FAILED
+            }
             val file = context.filesDir.resolve("imported/${profile.uuid}/config.yaml")
             if (file.exists() && file.readText() == cleaned) {
                 AppLog.d("SLTE-Kernel", "updateProfile: 订阅内容未变化，跳过内核重载")

@@ -16,7 +16,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slte.app.R
-import com.slte.app.domain.model.isPlanValid
 import com.slte.app.ui.component.CircleIconButton
 import com.slte.app.ui.component.SlteScaffold
 import com.slte.app.ui.component.SubmitTipHost
@@ -80,19 +79,17 @@ fun ProfileScreen(
                         onRetry = viewModel::retry,
                     )
                 } else {
-                    val info = data.subscribeInfo
-                    val hasPlan = info?.hasPlan == true
                     UsageCard(
-                        planName = info?.planName ?: "",
-                        usedBytes = info?.usedTraffic ?: 0L,
-                        totalBytes = info?.transferEnable ?: 0L,
-                        isValid = isPlanValid(info),
-                        hasPlan = hasPlan,
-                        daysUntilExpired = data.daysUntilExpired,
-                        expiredAtDate = info?.expiredAt?.takeIf { it > 0L }?.let { FormatUtils.formatExpiryDate(it) },
+                        planName = data.planName,
+                        usedBytes = data.usedBytes,
+                        totalBytes = data.totalBytes,
+                        isValid = data.isValid,
+                        hasPlan = data.hasPlan,
+                        daysUntilExpired = if (data.expiredAt > 0L) data.daysUntilExpired else null,
+                        expiredAtDate = if (data.expiredAt > 0L) FormatUtils.formatExpiryDate(data.expiredAt) else null,
                         actionText =
                         stringResource(
-                            if (hasPlan) R.string.plan_renew_button else R.string.plan_buy_button,
+                            if (data.hasPlan) R.string.plan_renew_button else R.string.plan_buy_button,
                         ),
                         actionEnabled = true,
                         onAction = onRenew,

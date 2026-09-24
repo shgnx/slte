@@ -50,7 +50,7 @@ class NodeNameResolverTest {
     @Test
     fun `展示名只去掉协议标签`() {
         assertEquals("🇸🇬node.example.com", NodeNameResolver.displayName("[vless]🇸🇬node.example.com"))
-        assertEquals("香港丨IEPL 1", NodeNameResolver.displayName("[Hy2] 香港丨IEPL 1"))
+        assertEquals("香港-IEPL 1", NodeNameResolver.displayName("[Hy2] 香港-IEPL 1"))
         assertEquals("[GIA]香港01", NodeNameResolver.displayName("[GIA]香港01"))
         assertEquals("香港01", NodeNameResolver.displayName("香港01"))
     }

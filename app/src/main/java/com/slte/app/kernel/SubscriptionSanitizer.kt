@@ -14,6 +14,14 @@ object SubscriptionSanitizer {
         return body.lineSequence().any { SanitizerRules.SUBSCRIBE_ENTRY_KEY.containsMatchIn(it.trimStart()) }
     }
 
+    fun isKernelLoadable(text: String): Boolean {
+        if (text.isBlank()) return false
+        val names = SanitizerProxyNames.names(text)
+        if (names.isEmpty()) return SanitizerProxyNames.hasProviders(text)
+        if (SanitizerProxyNames.itemsWithoutName(text) > 0) return false
+        return SanitizerProxyNames.duplicateNames(text).isEmpty()
+    }
+
     fun sanitize(
         text: String,
         domains: List<String>,
@@ -26,6 +34,7 @@ object SubscriptionSanitizer {
         val portsRewritten = runStep("zeroTopLevelPorts") { SanitizerNeutralizer.zeroTopLevelPorts(lines) }
         val controlNeutralized = runStep("neutralizeControlSurface") { SanitizerNeutralizer.neutralizeControlSurface(lines) }
         runStep("clearSubtitlePattern") { SanitizerNeutralizer.clearSubtitlePattern(lines) }
+        runStep("dedupeProxyNames") { SanitizerProxyNames.dedupe(lines) }
         runStep("injectHealthCheckConfig") { SanitizerInjector.injectHealthCheckConfig(lines) }
 
         var ruleInjected = true
