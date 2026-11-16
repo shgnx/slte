@@ -67,8 +67,9 @@ constructor(
                 val index = NodeNameMatcher.index(kernelNames)
                 // 内核已加载但面板节点匹配不上：订阅没下发，按超时展示而非留空白
                 val kernelReady = kernelNames.isNotEmpty()
-                val nodes =
-                    state.nodes.map { node ->
+                val panelNodes = state.nodes.filterNot { it.fromKernel }
+                val resolved =
+                    panelNodes.map { node ->
                         val proxyName = resolveKernelName(index, node)
                         node.copy(
                             proxyName = proxyName,
@@ -77,6 +78,7 @@ constructor(
                                 ?: if (kernelReady && proxyName == null) Constants.DELAY_TIMEOUT else node.delay,
                         )
                     }
+                val nodes = resolved + kernelOnlyNodes(resolved, kernelNames, cachedDelays)
                 // 自动/故障转移两行直接读测速缓存，不等整轮测速结束
                 val autoDelay = cachedDelays?.get(autoCurrent)?.takeIf { it != Constants.DELAY_TIMEOUT }
                 val fallbackDelay = cachedDelays?.get(fallbackCurrent)?.takeIf { it != Constants.DELAY_TIMEOUT }
@@ -149,6 +151,30 @@ constructor(
         node: NodeItem,
     ): String? = NodeNameMatcher.resolveKernelName(index, node.name, node.type)
 
+    private fun kernelOnlyNodes(
+        panelNodes: List<NodeItem>,
+        kernelNames: List<String>,
+        cachedDelays: Map<String, Int>?,
+    ): List<NodeItem> {
+        if (kernelNames.isEmpty()) return emptyList()
+        val taken = panelNodes.mapNotNullTo(HashSet<String>()) { it.proxyName }
+        return kernelNames
+            .asSequence()
+            .distinct()
+            .filterNot { it in taken }
+            .mapIndexed { index, name ->
+                NodeItem(
+                    id = panelNodes.size + index + 1,
+                    name = name,
+                    countryCode = extractCountryCode(name),
+                    delay = cachedDelays?.get(name),
+                    proxyName = name,
+                    fromKernel = true,
+                )
+            }
+            .toList()
+    }
+
     private fun selectedNodeIdOf(
         nodes: List<NodeItem>,
         info: KernelServerInfo?,
@@ -215,7 +241,7 @@ constructor(
 
     private fun applyNodes(servers: List<com.slte.app.domain.model.ServerNode>) {
         val existing = _data.value.nodes.associate { it.name to it.delay }
-        val nodes =
+        val panel =
             servers
                 .distinctBy { it.name }
                 .mapIndexed { index, server ->
@@ -227,7 +253,8 @@ constructor(
                         delay = existing[server.name],
                     )
                 }
-        _data.update { it.copy(nodes = nodes, isLoading = false) }
+        val kept = _data.value.nodes.filter { it.fromKernel }.mapIndexed { index, node -> node.copy(id = panel.size + index + 1) }
+        _data.update { it.copy(nodes = panel + kept, isLoading = false) }
         applySpecialNodeSnapshots()
         refreshSpecialNodes()
     }
@@ -381,4 +408,5 @@ data class NodeItem(
     val type: String = "",
     val delay: Int? = null,
     val proxyName: String? = null,
+    val fromKernel: Boolean = false,
 )
