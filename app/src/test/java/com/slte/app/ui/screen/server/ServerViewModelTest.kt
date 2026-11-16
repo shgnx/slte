@@ -133,10 +133,11 @@ class ServerViewModelTest {
         vm.loadNodes(force = true)
         advanceUntilIdle()
 
+        val before = vm.data.value.selectedNodeId
         vm.selectNode(vm.data.value.nodes.first().id)
         advanceUntilIdle()
 
-        assertEquals(0, vm.data.value.selectedNodeId)
+        assertEquals(before, vm.data.value.selectedNodeId)
     }
 
     @Test
